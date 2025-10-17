@@ -3,12 +3,15 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Star, Package, ShoppingBag, Calendar } from "lucide-react"
-import { mockUser, mockProducts } from "@/lib/mock-data"
+import { Star, Package, ShoppingBag, Calendar, Heart } from "lucide-react"
+import { mockUser, mockProducts, mockAuctions, mockPurchaseHistory, mockLikedItems } from "@/lib/mock-data"
 import { ProductCard } from "@/components/product-card"
+import { AuctionCard } from "@/components/auction-card"
+import Link from "next/link"
 
 export default function ProfilePage() {
   const userProducts = mockProducts.filter((p) => p.sellerId === "user1")
+  const userAuctions = mockAuctions.filter((a) => a.sellerId === "user1")
 
   return (
     <div className="min-h-screen bg-background">
@@ -45,7 +48,7 @@ export default function ProfilePage() {
           </Card>
 
           <Tabs defaultValue="selling" className="mb-8">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="selling">
                 <Package className="h-4 w-4 mr-2" />
                 出品中
@@ -54,6 +57,10 @@ export default function ProfilePage() {
                 <ShoppingBag className="h-4 w-4 mr-2" />
                 購入履歴
               </TabsTrigger>
+              <TabsTrigger value="likes">
+                <Heart className="h-4 w-4 mr-2" />
+                いいね
+              </TabsTrigger>
               <TabsTrigger value="reviews">
                 <Star className="h-4 w-4 mr-2" />
                 評価
@@ -61,23 +68,120 @@ export default function ProfilePage() {
             </TabsList>
 
             <TabsContent value="selling" className="mt-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {userProducts.map((product) => (
-                  <ProductCard key={product.id} product={product} />
-                ))}
-              </div>
-              {userProducts.length === 0 && (
+              <Tabs defaultValue="flea-market" className="w-full">
+                <TabsList className="grid w-full grid-cols-2 mb-6">
+                  <TabsTrigger value="flea-market">フリマ ({userProducts.length})</TabsTrigger>
+                  <TabsTrigger value="auction">オークション ({userAuctions.length})</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="flea-market">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {userProducts.map((product) => (
+                      <Link key={product.id} href={`/products/${product.id}/edit`}>
+                        <ProductCard product={product} />
+                      </Link>
+                    ))}
+                  </div>
+                  {userProducts.length === 0 && (
+                    <div className="text-center py-12">
+                      <p className="text-muted-foreground mb-4">出品中の商品はありません</p>
+                      <Button asChild>
+                        <Link href="/sell">商品を出品する</Link>
+                      </Button>
+                    </div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="auction">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {userAuctions.map((auction) => (
+                      <Link key={auction.id} href={`/auctions/${auction.id}/edit`}>
+                        <AuctionCard auction={auction} />
+                      </Link>
+                    ))}
+                  </div>
+                  {userAuctions.length === 0 && (
+                    <div className="text-center py-12">
+                      <p className="text-muted-foreground mb-4">出品中のオークションはありません</p>
+                      <Button asChild>
+                        <Link href="/auctions/sell">オークションを出品する</Link>
+                      </Button>
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
+            </TabsContent>
+
+            <TabsContent value="buying" className="mt-6">
+              {mockPurchaseHistory.length > 0 ? (
+                <div className="space-y-3">
+                  {mockPurchaseHistory.map((purchase) => (
+                    <Card key={purchase.id}>
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <Link href={`/products/${purchase.productId}`} className="font-semibold hover:underline">
+                              {purchase.productName}
+                            </Link>
+                            <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
+                              <span>¥{purchase.price.toLocaleString()}</span>
+                              <span>{new Date(purchase.purchaseDate).toLocaleDateString("ja-JP")}</span>
+                            </div>
+                          </div>
+                          <Button variant="outline" size="sm" asChild>
+                            <Link href={`/products/${purchase.productId}`}>詳細</Link>
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
                 <div className="text-center py-12">
-                  <p className="text-muted-foreground mb-4">出品中の商品はありません</p>
-                  <Button>商品を出品する</Button>
+                  <p className="text-muted-foreground">購入履歴はありません</p>
                 </div>
               )}
             </TabsContent>
 
-            <TabsContent value="buying" className="mt-6">
-              <div className="text-center py-12">
-                <p className="text-muted-foreground">購入履歴はありません</p>
-              </div>
+            <TabsContent value="likes" className="mt-6">
+              {mockLikedItems.length > 0 ? (
+                <Tabs defaultValue="products" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2 mb-6">
+                    <TabsTrigger value="products">
+                      フリマ ({mockLikedItems.filter((item) => item.type === "product").length})
+                    </TabsTrigger>
+                    <TabsTrigger value="auctions">
+                      オークション ({mockLikedItems.filter((item) => item.type === "auction").length})
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="products">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {mockLikedItems
+                        .filter((item) => item.type === "product")
+                        .map((item) => {
+                          const product = mockProducts.find((p) => p.id === item.itemId)
+                          return product ? <ProductCard key={product.id} product={product} /> : null
+                        })}
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="auctions">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {mockLikedItems
+                        .filter((item) => item.type === "auction")
+                        .map((item) => {
+                          const auction = mockAuctions.find((a) => a.id === item.itemId)
+                          return auction ? <AuctionCard key={auction.id} auction={auction} /> : null
+                        })}
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              ) : (
+                <div className="text-center py-12">
+                  <p className="text-muted-foreground">いいねした商品はありません</p>
+                </div>
+              )}
             </TabsContent>
 
             <TabsContent value="reviews" className="mt-6">

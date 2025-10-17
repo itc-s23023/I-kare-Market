@@ -69,6 +69,34 @@ export interface Bid {
   timestamp: string
 }
 
+export interface PurchaseHistory {
+  id: string
+  productId: string
+  productName: string
+  price: number
+  purchaseDate: string
+  sellerId: string
+  sellerName: string
+  type: "product" | "auction"
+}
+
+export interface Notification {
+  id: string
+  type: "purchase" | "bid" | "message" | "sold"
+  productId: string
+  productName: string
+  message: string
+  timestamp: string
+  read: boolean
+}
+
+export interface LikedItem {
+  id: string
+  itemId: string
+  type: "product" | "auction"
+  likedAt: string
+}
+
 export const mockProducts: Product[] = [
   {
     id: "1",
@@ -156,6 +184,49 @@ export const mockProducts: Product[] = [
   },
 ]
 
+export const mockUsers: User[] = [
+  {
+    id: "user1",
+    name: "田中太郎",
+    avatar: "/diverse-user-avatars.png",
+    rating: 4.8,
+    reviewCount: 23,
+    joinedDate: "2023-03-15",
+  },
+  {
+    id: "user2",
+    name: "佐藤花子",
+    avatar: "/diverse-user-avatars.png",
+    rating: 5.0,
+    reviewCount: 18,
+    joinedDate: "2023-05-20",
+  },
+  {
+    id: "user3",
+    name: "鈴木一郎",
+    avatar: "/diverse-user-avatars.png",
+    rating: 4.5,
+    reviewCount: 31,
+    joinedDate: "2023-02-10",
+  },
+  {
+    id: "user4",
+    name: "山田美咲",
+    avatar: "/diverse-user-avatars.png",
+    rating: 4.9,
+    reviewCount: 27,
+    joinedDate: "2023-04-05",
+  },
+  {
+    id: "user5",
+    name: "高橋健太",
+    avatar: "/diverse-user-avatars.png",
+    rating: 4.9,
+    reviewCount: 15,
+    joinedDate: "2023-06-12",
+  },
+]
+
 export const mockUser: User = {
   id: "current-user",
   name: "山田太郎",
@@ -163,6 +234,14 @@ export const mockUser: User = {
   rating: 4.7,
   reviewCount: 12,
   joinedDate: "2023-04-01",
+}
+
+export const userTransactionCounts: Record<string, number> = {
+  user1: 45,
+  user2: 32,
+  user3: 58,
+  user4: 41,
+  user5: 28,
 }
 
 export const mockAuctions: AuctionProduct[] = [
@@ -432,3 +511,104 @@ export const mockBids: Record<string, Bid[]> = {
     },
   ],
 }
+
+export const mockPurchaseHistory: PurchaseHistory[] = [
+  {
+    id: "ph1",
+    productId: "2",
+    productName: "MacBook Pro 13インチ ケース",
+    price: 1200,
+    purchaseDate: "2024-01-10",
+    sellerId: "user2",
+    sellerName: "佐藤花子",
+    type: "product",
+  },
+  {
+    id: "ph2",
+    productId: "5",
+    productName: "ワイヤレスマウス Logicool",
+    price: 2000,
+    purchaseDate: "2024-01-05",
+    sellerId: "user4",
+    sellerName: "山田美咲",
+    type: "product",
+  },
+  {
+    id: "ph3",
+    productId: "a2",
+    productName: "プログラミング言語C++ 第4版",
+    price: 3200,
+    purchaseDate: "2023-12-28",
+    sellerId: "user1",
+    sellerName: "田中太郎",
+    type: "auction",
+  },
+]
+
+export const mockNotifications: Notification[] = [
+  {
+    id: "n1",
+    type: "sold",
+    productId: "1",
+    productName: "微積分の教科書（第3版）",
+    message: "商品「微積分の教科書（第3版）」が佐藤花子さんに購入されました。",
+    timestamp: "2024-01-17T10:30:00",
+    read: false,
+  },
+  {
+    id: "n2",
+    type: "bid",
+    productId: "a1",
+    productName: "iPad Air 第5世代 64GB",
+    message: "オークション「iPad Air 第5世代 64GB」に新しい入札がありました。",
+    timestamp: "2024-01-17T09:15:00",
+    read: false,
+  },
+  {
+    id: "n3",
+    type: "message",
+    productId: "3",
+    productName: "ノートパソコンスタンド",
+    message: "商品「ノートパソコンスタンド」に新しいメッセージが届きました。",
+    timestamp: "2024-01-16T18:45:00",
+    read: true,
+  },
+  {
+    id: "n4",
+    type: "sold",
+    productId: "4",
+    productName: "英語辞書（ジーニアス英和辞典）",
+    message: "商品「英語辞書（ジーニアス英和辞典）」が鈴木一郎さんに購入されました。",
+    timestamp: "2024-01-15T14:20:00",
+    read: true,
+  },
+]
+
+export const mockLikedItems: LikedItem[] = [
+  {
+    id: "l1",
+    itemId: "2",
+    type: "product",
+    likedAt: "2024-01-15T10:00:00",
+  },
+  {
+    id: "l2",
+    itemId: "5",
+    type: "product",
+    likedAt: "2024-01-14T15:30:00",
+  },
+  {
+    id: "l3",
+    itemId: "a1",
+    type: "auction",
+    likedAt: "2024-01-16T12:20:00",
+  },
+  {
+    id: "l4",
+    itemId: "a5",
+    type: "auction",
+    likedAt: "2024-01-13T09:45:00",
+  },
+]
+
+export const mockLikedProducts: string[] = mockLikedItems.map((item) => item.itemId)
