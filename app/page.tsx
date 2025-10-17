@@ -14,7 +14,7 @@ export default function HomePage() {
       <Header />
 
       <div className="border-b bg-muted/30">
-        <div className="container px-4 py-4">
+        <div className="container mx-auto px-4 py-4">
           <div className="max-w-2xl mx-auto">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -24,7 +24,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      <main className="container px-4 py-8">
+      <main className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2 text-balance">学内で不要なものを売買しよう</h1>
           <p className="text-muted-foreground text-balance">学生同士で安心・安全に取引できるマーケットプレイス</p>
