@@ -21,7 +21,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
     <div className="min-h-screen bg-background">
       <Header />
 
-      <main className="container px-4 py-8">
+      <main className="container mx-auto px-4 py-8">
         <div className="max-w-2xl mx-auto">
           <div className="flex items-center gap-4 mb-6">
             <Button variant="ghost" size="icon" asChild>

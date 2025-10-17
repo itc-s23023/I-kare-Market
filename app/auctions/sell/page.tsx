@@ -39,7 +39,7 @@ export default function AuctionSellPage() {
     <div className="min-h-screen bg-background">
       <Header />
 
-      <main className="container px-4 py-8">
+      <main className="container mx-auto px-4 py-8">
         <div className="max-w-3xl mx-auto">
           <div className="mb-8">
             <h1 className="text-4xl font-bold mb-2">オークションに出品</h1>

@@ -79,7 +79,7 @@ export default function AuctionDetailPage({ params }: { params: { id: string } }
     <div className="min-h-screen bg-background">
       <Header />
 
-      <main className="container px-4 py-8">
+      <main className="container mx-auto px-4 py-8">
         <div className="grid lg:grid-cols-2 gap-8 max-w-6xl mx-auto">
           <div className="space-y-4">
             <div className="aspect-square relative overflow-hidden rounded-lg bg-muted">
