@@ -2,6 +2,8 @@ import { Header } from "@/components/header"
 import { AuctionCard } from "@/components/auction-card"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Input } from "@/components/ui/input"
+import { Search } from "lucide-react"
 import { mockAuctions } from "@/lib/mock-data"
 import { Gavel } from "lucide-react"
 import Link from "next/link"
@@ -18,6 +20,17 @@ export default function AuctionsPage() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
+
+      <div className="border-b bg-muted/30">
+        <div className="container px-4 py-4">
+          <div className="max-w-2xl mx-auto">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input type="search" placeholder="オークション商品を検索..." className="pl-10" />
+            </div>
+          </div>
+        </div>
+      </div>
 
       <main className="container px-4 py-8">
         <div className="max-w-7xl mx-auto">
