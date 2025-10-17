@@ -34,7 +34,7 @@ export default function SellPage() {
     <div className="min-h-screen bg-background">
       <Header />
 
-      <main className="container px-4 py-8">
+      <main className="container mx-auto px-4 py-8">
         <div className="max-w-2xl mx-auto">
           <h1 className="text-3xl font-bold mb-2">商品を出品する</h1>
           <p className="text-muted-foreground mb-8">不要になった教科書や物品を出品しましょう</p>
