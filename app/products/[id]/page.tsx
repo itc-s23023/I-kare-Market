@@ -1,10 +1,13 @@
+"use client"
+
+import { useState } from "react"
 import { Header } from "@/components/header"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Star, MessageCircle, Calendar } from "lucide-react"
-import { mockProducts } from "@/lib/mock-data"
+import { Star, MessageCircle, Calendar, Heart } from "lucide-react"
+import { mockProducts, mockLikedProducts } from "@/lib/mock-data"
 import Image from "next/image"
 import Link from "next/link"
 import { notFound } from "next/navigation"
@@ -22,6 +25,7 @@ export default function ProductDetailPage({
   params: { id: string }
 }) {
   const product = mockProducts.find((p) => p.id === params.id)
+  const [isLiked, setIsLiked] = useState(mockLikedProducts.includes(params.id))
 
   if (!product) {
     notFound()
@@ -31,11 +35,19 @@ export default function ProductDetailPage({
     <div className="min-h-screen bg-background">
       <Header />
 
-      <main className="container px-4 py-8">
+      <main className="container mx-auto px-4 py-8">
         <div className="grid lg:grid-cols-2 gap-8 max-w-6xl mx-auto">
           <div className="space-y-4">
             <div className="aspect-square relative overflow-hidden rounded-lg bg-muted">
               <Image src={product.images[0] || "/placeholder.svg"} alt={product.title} fill className="object-cover" />
+              <Button
+                size="icon"
+                variant="secondary"
+                className="absolute top-4 right-4 h-12 w-12 rounded-full shadow-lg"
+                onClick={() => setIsLiked(!isLiked)}
+              >
+                <Heart className={`h-6 w-6 ${isLiked ? "fill-red-500 text-red-500" : ""}`} />
+              </Button>
             </div>
           </div>
 
@@ -66,20 +78,25 @@ export default function ProductDetailPage({
             <Card>
               <CardContent className="p-6">
                 <h2 className="font-semibold mb-4">出品者情報</h2>
-                <div className="flex items-center gap-4">
-                  <Avatar className="h-12 w-12">
-                    <AvatarImage src="/diverse-user-avatars.png" />
-                    <AvatarFallback>{product.sellerName[0]}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <p className="font-semibold">{product.sellerName}</p>
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                      <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                      <span>{product.sellerRating}</span>
-                      <span className="ml-2">(15件の評価)</span>
+                <Link
+                  href={`/users/${product.sellerId}`}
+                  className="block hover:bg-muted/50 rounded-lg p-2 -m-2 transition-colors"
+                >
+                  <div className="flex items-center gap-4">
+                    <Avatar className="h-12 w-12">
+                      <AvatarImage src="/diverse-user-avatars.png" />
+                      <AvatarFallback>{product.sellerName[0]}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <p className="font-semibold hover:underline">{product.sellerName}</p>
+                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                        <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                        <span>{product.sellerRating}</span>
+                        <span className="ml-2">(15件の評価)</span>
+                      </div>
                     </div>
                   </div>
-                </div>
+                </Link>
               </CardContent>
             </Card>
 

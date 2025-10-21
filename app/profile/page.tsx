@@ -3,18 +3,21 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Star, Package, ShoppingBag, Calendar } from "lucide-react"
-import { mockUser, mockProducts } from "@/lib/mock-data"
+import { Star, Package, ShoppingBag, Calendar, Heart } from "lucide-react"
+import { mockUser, mockProducts, mockAuctions, mockPurchaseHistory, mockLikedItems } from "@/lib/mock-data"
 import { ProductCard } from "@/components/product-card"
+import { AuctionCard } from "@/components/auction-card"
+import Link from "next/link"
 
 export default function ProfilePage() {
   const userProducts = mockProducts.filter((p) => p.sellerId === "user1")
+  const userAuctions = mockAuctions.filter((a) => a.sellerId === "user1")
 
   return (
     <div className="min-h-screen bg-background">
       <Header />
 
-      <main className="container px-4 py-8">
+      <main className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
           <Card className="mb-8">
             <CardContent className="p-6">
@@ -38,14 +41,13 @@ export default function ProfilePage() {
                       </span>
                     </div>
                   </div>
-                  <Button>プロフィールを編集</Button>
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Tabs defaultValue="selling" className="mb-8">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="selling">
                 <Package className="h-4 w-4 mr-2" />
                 出品中
@@ -54,6 +56,10 @@ export default function ProfilePage() {
                 <ShoppingBag className="h-4 w-4 mr-2" />
                 購入履歴
               </TabsTrigger>
+              <TabsTrigger value="likes">
+                <Heart className="h-4 w-4 mr-2" />
+                いいね
+              </TabsTrigger>
               <TabsTrigger value="reviews">
                 <Star className="h-4 w-4 mr-2" />
                 評価
@@ -61,23 +67,156 @@ export default function ProfilePage() {
             </TabsList>
 
             <TabsContent value="selling" className="mt-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {userProducts.map((product) => (
-                  <ProductCard key={product.id} product={product} />
-                ))}
-              </div>
-              {userProducts.length === 0 && (
+              <Tabs defaultValue="flea-market" className="w-full">
+                <TabsList className="grid w-full grid-cols-2 mb-6">
+                  <TabsTrigger value="flea-market">フリマ ({userProducts.length})</TabsTrigger>
+                  <TabsTrigger value="auction">オークション ({userAuctions.length})</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="flea-market">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {userProducts.map((product) => (
+                      <Link key={product.id} href={`/products/${product.id}/edit`}>
+                        <ProductCard product={product} />
+                      </Link>
+                    ))}
+                  </div>
+                  {userProducts.length === 0 && (
+                    <div className="text-center py-12">
+                      <p className="text-muted-foreground mb-4">出品中の商品はありません</p>
+                      <Button asChild>
+                        <Link href="/sell">商品を出品する</Link>
+                      </Button>
+                    </div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="auction">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {userAuctions.map((auction) => (
+                      <Link key={auction.id} href={`/auctions/${auction.id}/edit`}>
+                        <AuctionCard auction={auction} />
+                      </Link>
+                    ))}
+                  </div>
+                  {userAuctions.length === 0 && (
+                    <div className="text-center py-12">
+                      <p className="text-muted-foreground mb-4">出品中のオークションはありません</p>
+                      <Button asChild>
+                        <Link href="/auctions/sell">オークションを出品する</Link>
+                      </Button>
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
+            </TabsContent>
+
+            <TabsContent value="buying" className="mt-6">
+              {mockPurchaseHistory.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm bg-card rounded-xl shadow-md border-separate border-spacing-0">
+                    <thead>
+                      <tr className="bg-muted text-muted-foreground">
+                        <th className="px-6 py-3 font-semibold text-left rounded-tl-xl">商品名</th>
+                        <th className="px-6 py-3 font-semibold text-left">日付</th>
+                        <th className="px-6 py-3 font-semibold text-right">金額</th>
+                        <th className="px-6 py-3 font-semibold text-left rounded-tr-xl">取引相手</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {mockPurchaseHistory.map((purchase, idx, arr) => (
+                        <tr
+                          key={purchase.id}
+                          className={`transition-colors hover:bg-accent/60 ${idx === arr.length - 1 ? 'last:rounded-b-xl' : ''}`}
+                          style={{ boxShadow: '0 1px 0 0 #e5e7eb' }}
+                        >
+                          <td className="px-6 py-4 font-semibold">
+                            {purchase.productName}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {new Date(purchase.purchaseDate).toLocaleDateString("ja-JP", { year: "numeric", month: "2-digit", day: "2-digit" })}
+                          </td>
+                          <td className="px-6 py-4 text-right font-mono text-base text-green-700">
+                            ¥{purchase.price.toLocaleString()}
+                          </td>
+                          <td className="px-6 py-4 flex items-center gap-2">
+                            <div className="flex items-center gap-2">
+                              <Avatar className="h-7 w-7">
+                                <AvatarImage src="/seller-avatar.png" />
+                                <AvatarFallback>{(purchase.sellerName || "-").charAt(0)}</AvatarFallback>
+                              </Avatar>
+                              {purchase.sellerId ? (
+                                <Link href={`/users/${purchase.sellerId}`} className="hover:underline text-primary">
+                                  {purchase.sellerName || "---"}
+                                </Link>
+                              ) : (
+                                <span>{purchase.sellerName || "---"}</span>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
                 <div className="text-center py-12">
-                  <p className="text-muted-foreground mb-4">出品中の商品はありません</p>
-                  <Button>商品を出品する</Button>
+                  <p className="text-muted-foreground">購入履歴はありません</p>
                 </div>
               )}
             </TabsContent>
 
-            <TabsContent value="buying" className="mt-6">
-              <div className="text-center py-12">
-                <p className="text-muted-foreground">購入履歴はありません</p>
-              </div>
+            <TabsContent value="likes" className="mt-6">
+              {mockLikedItems.length > 0 ? (
+                <Tabs defaultValue="products" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2 mb-6">
+                    <TabsTrigger value="products">
+                      フリマ ({mockLikedItems.filter((item) => item.type === "product").length})
+                    </TabsTrigger>
+                    <TabsTrigger value="auctions">
+                      オークション ({mockLikedItems.filter((item) => item.type === "auction").length})
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="products">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {mockLikedItems
+                        .filter((item) => item.type === "product")
+                        .map((item) => {
+                          const product = mockProducts.find((p) => p.id === item.itemId)
+                          return product ? (
+                            <Link key={product.id} href={`/products/${product.id}`} passHref legacyBehavior>
+                              <a style={{ display: "block", height: "100%" }}>
+                                <ProductCard product={product} />
+                              </a>
+                            </Link>
+                          ) : null
+                        })}
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="auctions">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {mockLikedItems
+                        .filter((item) => item.type === "auction")
+                        .map((item) => {
+                          const auction = mockAuctions.find((a) => a.id === item.itemId)
+                          return auction ? (
+                            <Link key={auction.id} href={`/auctions/${auction.id}`} passHref legacyBehavior>
+                              <a style={{ display: "block", height: "100%" }}>
+                                <AuctionCard auction={auction} />
+                              </a>
+                            </Link>
+                          ) : null
+                        })}
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              ) : (
+                <div className="text-center py-12">
+                  <p className="text-muted-foreground">いいねした商品はありません</p>
+                </div>
+              )}
             </TabsContent>
 
             <TabsContent value="reviews" className="mt-6">

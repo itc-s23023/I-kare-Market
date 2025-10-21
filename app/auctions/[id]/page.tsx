@@ -8,10 +8,11 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Star, Clock, TrendingUp, Gavel, MessageCircle } from "lucide-react"
-import { mockAuctions, mockBids } from "@/lib/mock-data"
+import { Star, Clock, TrendingUp, Gavel, MessageCircle, Heart } from "lucide-react"
+import { mockAuctions, mockBids, mockLikedProducts } from "@/lib/mock-data"
 import Image from "next/image"
 import { notFound, useRouter } from "next/navigation"
+import Link from "next/link"
 
 const conditionLabels = {
   new: "新品",
@@ -42,6 +43,7 @@ export default function AuctionDetailPage({ params }: { params: { id: string } }
   const bids = mockBids[params.id] || []
   const [bidAmount, setBidAmount] = useState("")
   const [showSuccess, setShowSuccess] = useState(false)
+  const [isLiked, setIsLiked] = useState(mockLikedProducts.includes(params.id))
 
   if (!auction) {
     notFound()
@@ -62,12 +64,14 @@ export default function AuctionDetailPage({ params }: { params: { id: string } }
   }
 
   const handleBuyNow = () => {
-    // 即決購入後はチャット画面へ遷移
     router.push(`/chat/${auction.id}`)
   }
 
   const handleContactWinner = () => {
-    // 落札後のチャット画面へ遷移
+    router.push(`/chat/${auction.id}`)
+  }
+
+  const handleContactSeller = () => {
     router.push(`/chat/${auction.id}`)
   }
 
@@ -75,11 +79,19 @@ export default function AuctionDetailPage({ params }: { params: { id: string } }
     <div className="min-h-screen bg-background">
       <Header />
 
-      <main className="container px-4 py-8">
+      <main className="container mx-auto px-4 py-8">
         <div className="grid lg:grid-cols-2 gap-8 max-w-6xl mx-auto">
           <div className="space-y-4">
             <div className="aspect-square relative overflow-hidden rounded-lg bg-muted">
               <Image src={auction.images[0] || "/placeholder.svg"} alt={auction.title} fill className="object-cover" />
+              <Button
+                size="icon"
+                variant="secondary"
+                className="absolute top-4 right-4 h-12 w-12 rounded-full shadow-lg"
+                onClick={() => setIsLiked(!isLiked)}
+              >
+                <Heart className={`h-6 w-6 ${isLiked ? "fill-red-500 text-red-500" : ""}`} />
+              </Button>
             </div>
           </div>
 
@@ -178,7 +190,7 @@ export default function AuctionDetailPage({ params }: { params: { id: string } }
                         <p className="text-muted-foreground mb-4">
                           落札者: <span className="font-semibold">{auction.highestBidderName}</span>
                         </p>
-                        <Button onClick={handleContactWinner} className="w-full">
+                        <Button onClick={handleContactSeller} className="w-full">
                           <MessageCircle className="h-4 w-4 mr-2" />
                           出品者とチャットで取引を進める
                         </Button>
@@ -191,7 +203,7 @@ export default function AuctionDetailPage({ params }: { params: { id: string } }
 
             <Card>
               <CardContent className="p-6">
-                <h2 className="font-semibold mb-3">商品の説明</h2>
+                <h2 className="font-semibold mb-4">商品の説明</h2>
                 <p className="text-muted-foreground leading-relaxed">{auction.description}</p>
               </CardContent>
             </Card>
@@ -220,20 +232,25 @@ export default function AuctionDetailPage({ params }: { params: { id: string } }
             <Card>
               <CardContent className="p-6">
                 <h2 className="font-semibold mb-4">出品者情報</h2>
-                <div className="flex items-center gap-4">
-                  <Avatar className="h-12 w-12">
-                    <AvatarImage src="/diverse-user-avatars.png" />
-                    <AvatarFallback>{auction.sellerName[0]}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <p className="font-semibold">{auction.sellerName}</p>
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                      <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                      <span>{auction.sellerRating}</span>
-                      <span className="ml-2">(15件の評価)</span>
+                <Link
+                  href={`/users/${auction.sellerId}`}
+                  className="block hover:bg-muted/50 rounded-lg p-2 -m-2 transition-colors"
+                >
+                  <div className="flex items-center gap-4">
+                    <Avatar className="h-12 w-12">
+                      <AvatarImage src="/diverse-user-avatars.png" />
+                      <AvatarFallback>{auction.sellerName[0]}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <p className="font-semibold hover:underline">{auction.sellerName}</p>
+                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                        <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                        <span>{auction.sellerRating}</span>
+                        <span className="ml-2">(15件の評価)</span>
+                      </div>
                     </div>
                   </div>
-                </div>
+                </Link>
               </CardContent>
             </Card>
           </div>

@@ -39,7 +39,7 @@ export default function AuctionSellPage() {
     <div className="min-h-screen bg-background">
       <Header />
 
-      <main className="container px-4 py-8">
+      <main className="container mx-auto px-4 py-8">
         <div className="max-w-3xl mx-auto">
           <div className="mb-8">
             <h1 className="text-4xl font-bold mb-2">オークションに出品</h1>
@@ -93,23 +93,6 @@ export default function AuctionSellPage() {
                 <div className="space-y-2">
                   <Label htmlFor="title">商品名</Label>
                   <Input id="title" placeholder="例: iPad Air 第5世代 64GB" />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="category">カテゴリー</Label>
-                  <Select>
-                    <SelectTrigger id="category">
-                      <SelectValue placeholder="カテゴリーを選択" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="electronics">電子機器</SelectItem>
-                      <SelectItem value="books">教科書・参考書</SelectItem>
-                      <SelectItem value="stationery">文房具</SelectItem>
-                      <SelectItem value="fashion">ファッション</SelectItem>
-                      <SelectItem value="sports">スポーツ用品</SelectItem>
-                      <SelectItem value="other">その他</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
 
                 <div className="space-y-2">

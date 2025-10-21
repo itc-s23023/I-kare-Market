@@ -34,7 +34,7 @@ export default function SellPage() {
     <div className="min-h-screen bg-background">
       <Header />
 
-      <main className="container px-4 py-8">
+      <main className="container mx-auto px-4 py-8">
         <div className="max-w-2xl mx-auto">
           <h1 className="text-3xl font-bold mb-2">商品を出品する</h1>
           <p className="text-muted-foreground mb-8">不要になった教科書や物品を出品しましょう</p>
@@ -92,22 +92,6 @@ export default function SellPage() {
                 <div className="space-y-2">
                   <Label htmlFor="price">価格（円）</Label>
                   <Input id="price" type="number" placeholder="2500" required />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="category">カテゴリー</Label>
-                  <Select required>
-                    <SelectTrigger id="category">
-                      <SelectValue placeholder="カテゴリーを選択" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="textbook">教科書</SelectItem>
-                      <SelectItem value="electronics">電子機器</SelectItem>
-                      <SelectItem value="stationery">文房具</SelectItem>
-                      <SelectItem value="daily">生活用品</SelectItem>
-                      <SelectItem value="other">その他</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
 
                 <div className="space-y-2">

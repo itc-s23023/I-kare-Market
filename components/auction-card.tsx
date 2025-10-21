@@ -1,9 +1,16 @@
+"use client"
+
+import type React from "react"
+
+import { useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Clock, TrendingUp, User } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Clock, TrendingUp, User, Heart } from "lucide-react"
 import Image from "next/image"
-import Link from "next/link"
+// ...existing code...
 import type { AuctionProduct } from "@/lib/mock-data"
+import { mockLikedProducts } from "@/lib/mock-data"
 
 interface AuctionCardProps {
   auction: AuctionProduct
@@ -29,58 +36,70 @@ export function AuctionCard({ auction }: AuctionCardProps) {
   const timeRemaining = getTimeRemaining(auction.endTime)
   const isEnding = timeRemaining.includes("時間") || timeRemaining.includes("分")
   const hasNoBids = auction.bidCount === 0
+  const [isLiked, setIsLiked] = useState(mockLikedProducts.includes(auction.id))
+
+  const handleLikeClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    setIsLiked(!isLiked)
+  }
 
   return (
-    <Link href={`/auctions/${auction.id}`}>
-      <Card className="overflow-hidden hover:shadow-lg transition-shadow">
-        <div className="aspect-square relative overflow-hidden bg-muted">
-          <Image src={auction.images[0] || "/placeholder.svg"} alt={auction.title} fill className="object-cover" />
-          {auction.status === "ended" && (
-            <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-              <Badge variant="secondary" className="text-lg">
-                終了
-              </Badge>
+    <Card className="overflow-hidden hover:shadow-lg transition-shadow h-full flex flex-col">
+      <div className="aspect-square relative overflow-hidden bg-muted">
+        <Image src={auction.images[0] || "/placeholder.svg"} alt={auction.title} fill className="object-cover" />
+        <Button
+          size="icon"
+          variant="secondary"
+          className="absolute top-3 right-3 h-9 w-9 rounded-full shadow-md"
+          onClick={handleLikeClick}
+        >
+          <Heart className={`h-5 w-5 ${isLiked ? "fill-red-500 text-red-500" : ""}`} />
+        </Button>
+        {auction.status === "ended" && (
+          <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+            <Badge variant="secondary" className="text-lg">
+              終了
+            </Badge>
+          </div>
+        )}
+        {auction.status === "active" && auction.bidCount > 0 && (
+          <Badge className="absolute top-3 left-3 bg-primary">入札中</Badge>
+        )}
+      </div>
+      <CardContent className="p-4 flex-1 flex flex-col">
+        <h3 className="font-semibold text-balance leading-tight mb-2 line-clamp-2">{auction.title}</h3>
+
+        <div className="space-y-2 mb-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">{hasNoBids ? "開始価格" : "現在の入札額"}</span>
+            <span className="text-xl font-bold text-primary">¥{auction.currentBid.toLocaleString()}</span>
+          </div>
+          {auction.buyNowPrice && (
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">即決価格</span>
+              <span className="text-sm font-semibold">¥{auction.buyNowPrice.toLocaleString()}</span>
             </div>
-          )}
-          {auction.status === "active" && auction.bidCount > 0 && (
-            <Badge className="absolute top-3 left-3 bg-primary">入札中</Badge>
           )}
         </div>
-        <CardContent className="p-4">
-          <h3 className="font-semibold text-balance leading-tight mb-2 line-clamp-2">{auction.title}</h3>
 
-          <div className="space-y-2 mb-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">{hasNoBids ? "開始価格" : "現在の入札額"}</span>
-              <span className="text-xl font-bold text-primary">¥{auction.currentBid.toLocaleString()}</span>
-            </div>
-            {auction.buyNowPrice && (
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">即決価格</span>
-                <span className="text-sm font-semibold">¥{auction.buyNowPrice.toLocaleString()}</span>
-              </div>
-            )}
+        <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
+          <div className="flex items-center gap-1">
+            <TrendingUp className="h-3 w-3" />
+            <span>{hasNoBids ? "入札なし" : `${auction.bidCount}件`}</span>
           </div>
+          <div className="flex items-center gap-1 truncate">
+            <User className="h-3 w-3 shrink-0" />
+            <span className="truncate">{auction.sellerName}</span>
+          </div>
+        </div>
 
-          <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
-            <div className="flex items-center gap-1">
-              <TrendingUp className="h-3 w-3" />
-              <span>{hasNoBids ? "入札なし" : `${auction.bidCount}件`}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <User className="h-3 w-3" />
-              <span>{auction.sellerName}</span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Clock className="h-4 w-4 text-muted-foreground" />
-            <span className={`text-sm font-medium ${isEnding ? "text-destructive" : "text-muted-foreground"}`}>
-              {timeRemaining}
-            </span>
-          </div>
-        </CardContent>
-      </Card>
-    </Link>
+        <div className="flex items-center gap-2 mt-auto">
+          <Clock className="h-4 w-4 text-muted-foreground" />
+          <span className={`text-sm font-medium ${isEnding ? "text-destructive" : "text-muted-foreground"}`}>
+            {timeRemaining}
+          </span>
+        </div>
+      </CardContent>
+    </Card>
   )
 }
