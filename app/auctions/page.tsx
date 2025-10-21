@@ -1,6 +1,5 @@
 import { Header } from "@/components/header"
 import { AuctionCard } from "@/components/auction-card"
-import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { Search } from "lucide-react"
@@ -21,7 +20,7 @@ export default function AuctionsPage() {
     <div className="min-h-screen bg-background">
       <Header />
 
-      <div className="border-b bg-muted/30">
+      <div>
         <div className="container mx-auto px-4 py-4">
           <div className="max-w-2xl mx-auto">
             <div className="relative">
@@ -42,9 +41,6 @@ export default function AuctionsPage() {
               </h1>
               <p className="text-muted-foreground">入札して欲しい商品を手に入れよう</p>
             </div>
-            <Button size="lg" asChild>
-              <Link href="/auctions/sell">オークションに出品</Link>
-            </Button>
           </div>
 
           <Tabs defaultValue="all" className="mb-8">
@@ -56,7 +52,11 @@ export default function AuctionsPage() {
             <TabsContent value="all" className="mt-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {activeAuctions.map((auction) => (
-                  <AuctionCard key={auction.id} auction={auction} />
+                  <Link key={auction.id} href={`/auctions/${auction.id}`} passHref legacyBehavior>
+                    <a style={{ display: "block", height: "100%" }}>
+                      <AuctionCard auction={auction} />
+                    </a>
+                  </Link>
                 ))}
               </div>
             </TabsContent>
@@ -64,7 +64,13 @@ export default function AuctionsPage() {
             <TabsContent value="ending" className="mt-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {endingSoonAuctions.length > 0 ? (
-                  endingSoonAuctions.map((auction) => <AuctionCard key={auction.id} auction={auction} />)
+                  endingSoonAuctions.map((auction) => (
+                    <Link key={auction.id} href={`/auctions/${auction.id}`} passHref legacyBehavior>
+                      <a style={{ display: "block", height: "100%" }}>
+                        <AuctionCard auction={auction} />
+                      </a>
+                    </Link>
+                  ))
                 ) : (
                   <div className="col-span-full text-center py-12 text-muted-foreground">
                     まもなく終了するオークションはありません

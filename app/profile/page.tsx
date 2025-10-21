@@ -41,7 +41,6 @@ export default function ProfilePage() {
                       </span>
                     </div>
                   </div>
-                  <Button>プロフィールを編集</Button>
                 </div>
               </div>
             </CardContent>
@@ -114,27 +113,51 @@ export default function ProfilePage() {
 
             <TabsContent value="buying" className="mt-6">
               {mockPurchaseHistory.length > 0 ? (
-                <div className="space-y-3">
-                  {mockPurchaseHistory.map((purchase) => (
-                    <Card key={purchase.id}>
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <Link href={`/products/${purchase.productId}`} className="font-semibold hover:underline">
-                              {purchase.productName}
-                            </Link>
-                            <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
-                              <span>¥{purchase.price.toLocaleString()}</span>
-                              <span>{new Date(purchase.purchaseDate).toLocaleDateString("ja-JP")}</span>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm bg-card rounded-xl shadow-md border-separate border-spacing-0">
+                    <thead>
+                      <tr className="bg-muted text-muted-foreground">
+                        <th className="px-6 py-3 font-semibold text-left rounded-tl-xl">商品名</th>
+                        <th className="px-6 py-3 font-semibold text-left">日付</th>
+                        <th className="px-6 py-3 font-semibold text-right">金額</th>
+                        <th className="px-6 py-3 font-semibold text-left rounded-tr-xl">取引相手</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {mockPurchaseHistory.map((purchase, idx, arr) => (
+                        <tr
+                          key={purchase.id}
+                          className={`transition-colors hover:bg-accent/60 ${idx === arr.length - 1 ? 'last:rounded-b-xl' : ''}`}
+                          style={{ boxShadow: '0 1px 0 0 #e5e7eb' }}
+                        >
+                          <td className="px-6 py-4 font-semibold">
+                            {purchase.productName}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {new Date(purchase.purchaseDate).toLocaleDateString("ja-JP", { year: "numeric", month: "2-digit", day: "2-digit" })}
+                          </td>
+                          <td className="px-6 py-4 text-right font-mono text-base text-green-700">
+                            ¥{purchase.price.toLocaleString()}
+                          </td>
+                          <td className="px-6 py-4 flex items-center gap-2">
+                            <div className="flex items-center gap-2">
+                              <Avatar className="h-7 w-7">
+                                <AvatarImage src="/seller-avatar.png" />
+                                <AvatarFallback>{(purchase.sellerName || "-").charAt(0)}</AvatarFallback>
+                              </Avatar>
+                              {purchase.sellerId ? (
+                                <Link href={`/users/${purchase.sellerId}`} className="hover:underline text-primary">
+                                  {purchase.sellerName || "---"}
+                                </Link>
+                              ) : (
+                                <span>{purchase.sellerName || "---"}</span>
+                              )}
                             </div>
-                          </div>
-                          <Button variant="outline" size="sm" asChild>
-                            <Link href={`/products/${purchase.productId}`}>詳細</Link>
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               ) : (
                 <div className="text-center py-12">
@@ -161,7 +184,13 @@ export default function ProfilePage() {
                         .filter((item) => item.type === "product")
                         .map((item) => {
                           const product = mockProducts.find((p) => p.id === item.itemId)
-                          return product ? <ProductCard key={product.id} product={product} /> : null
+                          return product ? (
+                            <Link key={product.id} href={`/products/${product.id}`} passHref legacyBehavior>
+                              <a style={{ display: "block", height: "100%" }}>
+                                <ProductCard product={product} />
+                              </a>
+                            </Link>
+                          ) : null
                         })}
                     </div>
                   </TabsContent>
@@ -172,7 +201,13 @@ export default function ProfilePage() {
                         .filter((item) => item.type === "auction")
                         .map((item) => {
                           const auction = mockAuctions.find((a) => a.id === item.itemId)
-                          return auction ? <AuctionCard key={auction.id} auction={auction} /> : null
+                          return auction ? (
+                            <Link key={auction.id} href={`/auctions/${auction.id}`} passHref legacyBehavior>
+                              <a style={{ display: "block", height: "100%" }}>
+                                <AuctionCard auction={auction} />
+                              </a>
+                            </Link>
+                          ) : null
                         })}
                     </div>
                   </TabsContent>

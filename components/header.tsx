@@ -24,6 +24,8 @@ export function Header() {
     }
   }
 
+  const sellLink = isAuctionPage ? "/auctions/sell" : "/sell"
+
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center gap-4 px-4">
@@ -51,7 +53,7 @@ export function Header() {
             </Button>
           )}
           <Button asChild variant="ghost">
-            <Link href="/sell">
+            <Link href={sellLink}>
               <Plus className="h-4 w-4 mr-2" />
               出品する
             </Link>
@@ -129,7 +131,7 @@ export function Header() {
                 </Button>
               )}
               <Button asChild className="w-full justify-start">
-                <Link href="/sell">
+                <Link href={sellLink}>
                   <Plus className="h-4 w-4 mr-2" />
                   出品する
                 </Link>

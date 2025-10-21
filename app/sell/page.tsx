@@ -95,22 +95,6 @@ export default function SellPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="category">カテゴリー</Label>
-                  <Select required>
-                    <SelectTrigger id="category">
-                      <SelectValue placeholder="カテゴリーを選択" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="textbook">教科書</SelectItem>
-                      <SelectItem value="electronics">電子機器</SelectItem>
-                      <SelectItem value="stationery">文房具</SelectItem>
-                      <SelectItem value="daily">生活用品</SelectItem>
-                      <SelectItem value="other">その他</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
                   <Label htmlFor="condition">商品の状態</Label>
                   <Select required>
                     <SelectTrigger id="condition">
