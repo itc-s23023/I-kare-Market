@@ -24,7 +24,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="container max-w-7xl mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2 text-balance">学内で不要なものを売買しよう</h1>
           <p className="text-muted-foreground text-balance">学生同士で安心・安全に取引できるマーケットプレイス</p>
