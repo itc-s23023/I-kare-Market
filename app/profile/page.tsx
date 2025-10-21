@@ -184,7 +184,13 @@ export default function ProfilePage() {
                         .filter((item) => item.type === "product")
                         .map((item) => {
                           const product = mockProducts.find((p) => p.id === item.itemId)
-                          return product ? <ProductCard key={product.id} product={product} /> : null
+                          return product ? (
+                            <Link key={product.id} href={`/products/${product.id}`} passHref legacyBehavior>
+                              <a style={{ display: "block", height: "100%" }}>
+                                <ProductCard product={product} />
+                              </a>
+                            </Link>
+                          ) : null
                         })}
                     </div>
                   </TabsContent>
@@ -195,7 +201,13 @@ export default function ProfilePage() {
                         .filter((item) => item.type === "auction")
                         .map((item) => {
                           const auction = mockAuctions.find((a) => a.id === item.itemId)
-                          return auction ? <AuctionCard key={auction.id} auction={auction} /> : null
+                          return auction ? (
+                            <Link key={auction.id} href={`/auctions/${auction.id}`} passHref legacyBehavior>
+                              <a style={{ display: "block", height: "100%" }}>
+                                <AuctionCard auction={auction} />
+                              </a>
+                            </Link>
+                          ) : null
                         })}
                     </div>
                   </TabsContent>

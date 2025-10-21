@@ -1,6 +1,7 @@
 import { Header } from "@/components/header"
 import { ProductCard } from "@/components/product-card"
 import { Button } from "@/components/ui/button"
+import Link from "next/link"
 import { Input } from "@/components/ui/input"
 import { Search } from "lucide-react"
 import { mockProducts } from "@/lib/mock-data"
@@ -30,7 +31,11 @@ export default function HomePage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {mockProducts.map((product) => (
-            <ProductCard key={product.id} product={product} />
+            <Link key={product.id} href={`/products/${product.id}`} passHref legacyBehavior>
+              <a style={{ display: "block", height: "100%" }}>
+                <ProductCard product={product} />
+              </a>
+            </Link>
           ))}
         </div>
 

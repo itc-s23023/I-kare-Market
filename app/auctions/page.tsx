@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input"
 import { Search } from "lucide-react"
 import { mockAuctions } from "@/lib/mock-data"
 import { Gavel } from "lucide-react"
+import Link from "next/link"
 
 export default function AuctionsPage() {
   const activeAuctions = mockAuctions.filter((a) => a.status === "active")
@@ -51,7 +52,11 @@ export default function AuctionsPage() {
             <TabsContent value="all" className="mt-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {activeAuctions.map((auction) => (
-                  <AuctionCard key={auction.id} auction={auction} />
+                  <Link key={auction.id} href={`/auctions/${auction.id}`} passHref legacyBehavior>
+                    <a style={{ display: "block", height: "100%" }}>
+                      <AuctionCard auction={auction} />
+                    </a>
+                  </Link>
                 ))}
               </div>
             </TabsContent>
@@ -59,7 +64,13 @@ export default function AuctionsPage() {
             <TabsContent value="ending" className="mt-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {endingSoonAuctions.length > 0 ? (
-                  endingSoonAuctions.map((auction) => <AuctionCard key={auction.id} auction={auction} />)
+                  endingSoonAuctions.map((auction) => (
+                    <Link key={auction.id} href={`/auctions/${auction.id}`} passHref legacyBehavior>
+                      <a style={{ display: "block", height: "100%" }}>
+                        <AuctionCard auction={auction} />
+                      </a>
+                    </Link>
+                  ))
                 ) : (
                   <div className="col-span-full text-center py-12 text-muted-foreground">
                     まもなく終了するオークションはありません
