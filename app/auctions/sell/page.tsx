@@ -96,23 +96,6 @@ export default function AuctionSellPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="category">カテゴリー</Label>
-                  <Select>
-                    <SelectTrigger id="category">
-                      <SelectValue placeholder="カテゴリーを選択" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="electronics">電子機器</SelectItem>
-                      <SelectItem value="books">教科書・参考書</SelectItem>
-                      <SelectItem value="stationery">文房具</SelectItem>
-                      <SelectItem value="fashion">ファッション</SelectItem>
-                      <SelectItem value="sports">スポーツ用品</SelectItem>
-                      <SelectItem value="other">その他</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
                   <Label htmlFor="condition">商品の状態</Label>
                   <Select>
                     <SelectTrigger id="condition">
