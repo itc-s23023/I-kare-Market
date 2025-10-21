@@ -1,12 +1,10 @@
 import { Header } from "@/components/header"
 import { AuctionCard } from "@/components/auction-card"
-import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { Search } from "lucide-react"
 import { mockAuctions } from "@/lib/mock-data"
 import { Gavel } from "lucide-react"
-import Link from "next/link"
 
 export default function AuctionsPage() {
   const activeAuctions = mockAuctions.filter((a) => a.status === "active")
@@ -42,9 +40,6 @@ export default function AuctionsPage() {
               </h1>
               <p className="text-muted-foreground">入札して欲しい商品を手に入れよう</p>
             </div>
-            <Button size="lg" asChild>
-              <Link href="/auctions/sell">オークションに出品</Link>
-            </Button>
           </div>
 
           <Tabs defaultValue="all" className="mb-8">
