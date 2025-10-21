@@ -1,13 +1,11 @@
 import { Header } from "@/components/header"
 import { ProductCard } from "@/components/product-card"
 import { Button } from "@/components/ui/button"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { Search } from "lucide-react"
 import { mockProducts } from "@/lib/mock-data"
 
 export default function HomePage() {
-  const categories = ["すべて", "教科書", "電子機器", "文房具", "生活用品", "その他"]
 
   return (
     <div className="min-h-screen bg-background">
@@ -28,18 +26,6 @@ export default function HomePage() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2 text-balance">学内で不要なものを売買しよう</h1>
           <p className="text-muted-foreground text-balance">学生同士で安心・安全に取引できるマーケットプレイス</p>
-        </div>
-
-        <div className="mb-6 overflow-x-auto">
-          <Tabs defaultValue="すべて" className="w-full">
-            <TabsList className="inline-flex w-auto">
-              {categories.map((category) => (
-                <TabsTrigger key={category} value={category}>
-                  {category}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
