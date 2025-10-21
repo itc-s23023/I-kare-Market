@@ -21,7 +21,7 @@ export default function AuctionsPage() {
     <div className="min-h-screen bg-background">
       <Header />
 
-      <div className="border-b bg-muted/30">
+      <div>
         <div className="container mx-auto px-4 py-4">
           <div className="max-w-2xl mx-auto">
             <div className="relative">
