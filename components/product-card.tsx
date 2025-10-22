@@ -75,9 +75,6 @@ export function ProductCard({ product }: ProductCardProps) {
           <h3 className="font-semibold text-base line-clamp-2 leading-snug">{product.title}</h3>
         </div>
         <div className="flex items-center gap-2 mb-2">
-          <Badge variant="outline" className="text-xs">
-            {product.category}
-          </Badge>
           <Badge variant="secondary" className="text-xs">
             {conditionLabels[product.condition]}
           </Badge>

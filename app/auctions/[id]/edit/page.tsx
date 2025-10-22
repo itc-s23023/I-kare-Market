@@ -56,22 +56,6 @@ export default async function EditAuctionPage({ params }: { params: Promise<{ id
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="category">カテゴリー</Label>
-                <Select defaultValue={auction.category}>
-                  <SelectTrigger id="category">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="教科書">教科書</SelectItem>
-                    <SelectItem value="電子機器">電子機器</SelectItem>
-                    <SelectItem value="文房具">文房具</SelectItem>
-                    <SelectItem value="衣類">衣類</SelectItem>
-                    <SelectItem value="その他">その他</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
                 <Label htmlFor="condition">商品の状態</Label>
                 <Select defaultValue={auction.condition}>
                   <SelectTrigger id="condition">
