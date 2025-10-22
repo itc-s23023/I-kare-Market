@@ -11,8 +11,9 @@ import Link from "next/link"
 import { mockAuctions } from "@/lib/mock-data"
 import { notFound } from "next/navigation"
 
-export default function EditAuctionPage({ params }: { params: { id: string } }) {
-  const auction = mockAuctions.find((a) => a.id === params.id)
+export default async function EditAuctionPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  const auction = mockAuctions.find((a) => a.id === id)
 
   if (!auction) {
     notFound()

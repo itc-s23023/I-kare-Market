@@ -1,6 +1,5 @@
 "use client"
-
-import { useState } from "react"
+import { use, useState } from "react"
 import { Header } from "@/components/header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,9 +14,10 @@ import { notFound } from "next/navigation"
 export default function ChatPage({
   params,
 }: {
-  params: { productId: string }
+  params: Promise<{ productId: string }>
 }) {
-  const product = mockProducts.find((p) => p.id === params.productId)
+  const { productId } = use(params)
+  const product = mockProducts.find((p) => p.id === productId)
   const [messages, setMessages] = useState([
     {
       id: "1",
