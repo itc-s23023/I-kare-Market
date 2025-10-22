@@ -31,7 +31,7 @@ export function ProductForm({ onSubmit, isSubmitting }: ProductFormProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!productname || !content || !price || !category || !condition) {
+    if (!productname || !content || !price ||  !condition) {
       alert("必須項目を入力してください")
       return
     }
@@ -112,15 +112,15 @@ export function ProductForm({ onSubmit, isSubmitting }: ProductFormProps) {
             />
           </div>
 
-          <div className="flex items-center space-x-2">
+          {/* <div className="flex items-center space-x-2">
             <input
-              type="checkbox"
+
               id="is_trading"
               checked={is_trading}
               onChange={(e) => setIsTrading(e.target.checked)}
               className="rounded"
             />
-          </div>
+          </div> */}
 
           <Button 
             type="submit" 
