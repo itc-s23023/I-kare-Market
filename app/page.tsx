@@ -34,6 +34,7 @@ export default function HomePage() {
             <Link key={product.id} href={`/products/${product.id}`} passHref legacyBehavior>
               <a style={{ display: "block", height: "100%" }}>
                 <ProductCard product={product} />
+                
               </a>
             </Link>
           ))}
@@ -47,6 +48,8 @@ export default function HomePage() {
             </Button>
           </div>
         )}
+      
+      
       </main>
     </div>
   )
