@@ -104,7 +104,7 @@ export default async function EditAuctionPage({ params }: { params: Promise<{ id
                 <Label>商品画像</Label>
                 <div className="border-2 border-dashed rounded-lg p-4">
                   <img
-                    src={auction.image || "/placeholder.svg"}
+                    src={auction.images[0] || "/placeholder.svg"}
                     alt={auction.title}
                     className="w-full h-48 object-cover rounded-lg mb-2"
                   />

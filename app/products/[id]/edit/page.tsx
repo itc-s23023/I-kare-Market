@@ -73,7 +73,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
                 <Label>商品画像</Label>
                 <div className="border-2 border-dashed rounded-lg p-4">
                   <img
-                    src={product.image || "/placeholder.svg"}
+                    src={product.images[0] || "/placeholder.svg"}
                     alt={product.title}
                     className="w-full h-48 object-cover rounded-lg mb-2"
                   />
