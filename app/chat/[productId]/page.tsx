@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Send, Check } from "lucide-react"
-import { mockProducts, mockUser } from "@/lib/mock-data"
+import { mockProducts, mockUser, mockAuctions } from "@/lib/mock-data"
 import Image from "next/image"
 import { notFound } from "next/navigation"
 
@@ -17,7 +17,26 @@ export default function ChatPage({
   params: Promise<{ productId: string }>
 }) {
   const { productId } = use(params)
-  const product = mockProducts.find((p) => p.id === productId)
+  let product = mockProducts.find((p) => p.id === productId)
+  // auctionIdでアクセスされた場合はmockAuctionsから取得
+  if (!product) {
+    const auction = mockAuctions.find((a) => a.id === productId)
+    if (auction) {
+      product = {
+        id: auction.id,
+        title: auction.title,
+        price: auction.currentBid,
+        description: auction.description,
+        condition: auction.condition,
+        images: auction.images,
+        sellerId: auction.sellerId,
+        sellerName: auction.sellerName,
+        sellerRating: auction.sellerRating,
+        createdAt: auction.createdAt,
+        status: auction.status === "ended" ? "sold" : "available",
+      }
+    }
+  }
   const [messages, setMessages] = useState([
     {
       id: "1",
