@@ -63,7 +63,6 @@ export default function ProductDetailPage({
                 )}
               </div>
               <div className="flex items-center gap-2 mb-4">
-                <Badge variant="outline">{product.category}</Badge>
                 <Badge variant="secondary">{conditionLabels[product.condition]}</Badge>
               </div>
               <p className="text-4xl font-bold text-primary mb-4">¥{product.price.toLocaleString()}</p>

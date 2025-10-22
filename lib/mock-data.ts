@@ -3,7 +3,6 @@ export interface Product {
   title: string
   price: number
   description: string
-  category: string
   condition: "new" | "like-new" | "good" | "fair"
   images: string[]
   sellerId: string
@@ -46,7 +45,6 @@ export interface AuctionProduct {
   currentBid: number
   buyNowPrice?: number
   description: string
-  category: string
   condition: "new" | "like-new" | "good" | "fair"
   images: string[]
   sellerId: string
@@ -104,7 +102,6 @@ export const mockProducts: Product[] = [
     title: "微積分の教科書（第3版）",
     price: 2500,
     description: "昨年使用していた微積分の教科書です。書き込みは少なく、状態は良好です。",
-    category: "教科書",
     condition: "good",
     images: ["/calculus-textbook.png"],
     sellerId: "user1",
@@ -118,7 +115,6 @@ export const mockProducts: Product[] = [
     title: "MacBook Pro 13インチ ケース",
     price: 1200,
     description: "未使用に近い状態のMacBookケースです。色はグレー。",
-    category: "電子機器",
     condition: "like-new",
     images: ["/macbook-pro-case-grey.jpg"],
     sellerId: "user2",
@@ -132,7 +128,6 @@ export const mockProducts: Product[] = [
     title: "ノートパソコンスタンド",
     price: 1800,
     description: "アルミ製のノートパソコンスタンド。角度調整可能です。",
-    category: "電子機器",
     condition: "good",
     images: ["/aluminum-laptop-stand.jpg"],
     sellerId: "user3",
@@ -146,7 +141,6 @@ export const mockProducts: Product[] = [
     title: "英語辞書（ジーニアス英和辞典）",
     price: 1500,
     description: "英語の授業で使用していた辞書です。カバー付き。",
-    category: "教科書",
     condition: "good",
     images: ["/english-dictionary.png"],
     sellerId: "user1",
@@ -160,7 +154,6 @@ export const mockProducts: Product[] = [
     title: "ワイヤレスマウス Logicool",
     price: 2000,
     description: "半年使用したワイヤレスマウス。動作良好です。",
-    category: "電子機器",
     condition: "good",
     images: ["/logitech-wireless-mouse.jpg"],
     sellerId: "user4",
@@ -174,7 +167,6 @@ export const mockProducts: Product[] = [
     title: "統計学入門（東京大学出版会）",
     price: 2800,
     description: "統計学の基礎を学ぶのに最適な教科書です。",
-    category: "教科書",
     condition: "like-new",
     images: ["/statistics-textbook.jpg"],
     sellerId: "user2",
@@ -253,7 +245,6 @@ export const mockAuctions: AuctionProduct[] = [
     currentBid: 45000,
     buyNowPrice: 60000,
     description: "昨年購入したiPad Air。画面に傷なし、動作良好です。充電器とケース付き。",
-    category: "電子機器",
     condition: "like-new",
     images: ["/ipad-air-space-grey.jpg"],
     sellerId: "user5",
@@ -274,7 +265,6 @@ export const mockAuctions: AuctionProduct[] = [
     currentBid: 3200,
     buyNowPrice: 5000,
     description: "C++の定番教科書。書き込みなし、美品です。",
-    category: "教科書",
     condition: "good",
     images: ["/cpp-programming-book.jpg"],
     sellerId: "user1",
@@ -295,7 +285,6 @@ export const mockAuctions: AuctionProduct[] = [
     currentBid: 15000,
     buyNowPrice: 28000,
     description: "1年使用したSonyのノイズキャンセリングヘッドホン。音質良好、外箱付き。",
-    category: "電子機器",
     condition: "good",
     images: ["/sony-headphones-black.jpg"],
     sellerId: "user3",
@@ -313,7 +302,6 @@ export const mockAuctions: AuctionProduct[] = [
     startingPrice: 1500,
     currentBid: 1500,
     description: "数学科向けの関数解析の教科書。状態良好です。",
-    category: "教科書",
     condition: "good",
     images: ["/functional-analysis-book.jpg"],
     sellerId: "user2",
@@ -332,7 +320,6 @@ export const mockAuctions: AuctionProduct[] = [
     currentBid: 12500,
     buyNowPrice: 18000,
     description: "英語学習に最適な電子辞書。バッテリー良好、ケース付き。",
-    category: "電子機器",
     condition: "good",
     images: ["/casio-electronic-dictionary.jpg"],
     sellerId: "user4",
@@ -353,7 +340,6 @@ export const mockAuctions: AuctionProduct[] = [
     currentBid: 25000,
     buyNowPrice: 35000,
     description: "半年使用したSwitch。本体、ドック、コントローラー全て揃っています。",
-    category: "電子機器",
     condition: "like-new",
     images: ["/nintendo-switch-oled.jpg"],
     sellerId: "user5",
@@ -371,7 +357,6 @@ export const mockAuctions: AuctionProduct[] = [
     startingPrice: 1800,
     currentBid: 2400,
     description: "線形代数の教科書。マーカーでの線引きあり。",
-    category: "教科書",
     condition: "good",
     images: ["/linear-algebra-textbook.jpg"],
     sellerId: "user1",
@@ -392,7 +377,6 @@ export const mockAuctions: AuctionProduct[] = [
     currentBid: 2000,
     buyNowPrice: 4000,
     description: "コンパクトなBluetoothキーボード。3台まで接続可能。",
-    category: "電子機器",
     condition: "good",
     images: ["/logitech-keyboard-k380.jpg"],
     sellerId: "user3",
