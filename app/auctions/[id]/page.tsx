@@ -113,7 +113,6 @@ export default function AuctionDetailPage({ params }: { params: Promise<{ id: st
                 )}
               </div>
               <div className="flex items-center gap-2 mb-4">
-                <Badge variant="outline">{auction.category}</Badge>
                 <Badge variant="secondary">{conditionLabels[auction.condition]}</Badge>
               </div>
             </div>
