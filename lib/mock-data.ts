@@ -58,6 +58,7 @@ export interface AuctionProduct {
   bidCount: number
   highestBidder?: string
   highestBidderName?: string
+  isTrading: boolean
 }
 
 export interface Bid {
@@ -258,12 +259,13 @@ export const mockAuctions: AuctionProduct[] = [
     sellerId: "user5",
     sellerName: "高橋健太",
     sellerRating: 4.9,
-    createdAt: "2024-01-16",
-    endTime: "2024-01-20T23:59:59",
+    createdAt: "2025-10-20",
+    endTime: "2025-10-25T23:59:59",
     status: "active",
     bidCount: 8,
     highestBidder: "user6",
     highestBidderName: "伊藤さくら",
+    isTrading: true,
   },
   {
     id: "a2",
@@ -278,12 +280,13 @@ export const mockAuctions: AuctionProduct[] = [
     sellerId: "user1",
     sellerName: "田中太郎",
     sellerRating: 4.8,
-    createdAt: "2024-01-15",
-    endTime: "2024-01-19T20:00:00",
+    createdAt: "2025-10-19",
+    endTime: "2025-10-24T20:00:00",
     status: "active",
     bidCount: 5,
     highestBidder: "user7",
     highestBidderName: "中村優子",
+    isTrading: false,
   },
   {
     id: "a3",
@@ -298,10 +301,11 @@ export const mockAuctions: AuctionProduct[] = [
     sellerId: "user3",
     sellerName: "鈴木一郎",
     sellerRating: 4.5,
-    createdAt: "2024-01-14",
-    endTime: "2024-01-21T18:00:00",
+    createdAt: "2025-10-18",
+    endTime: "2025-10-26T18:00:00",
     status: "active",
     bidCount: 0,
+    isTrading: true,
   },
   {
     id: "a4",
@@ -315,10 +319,11 @@ export const mockAuctions: AuctionProduct[] = [
     sellerId: "user2",
     sellerName: "佐藤花子",
     sellerRating: 5.0,
-    createdAt: "2024-01-13",
-    endTime: "2024-01-18T22:00:00",
+    createdAt: "2025-10-17",
+    endTime: "2025-10-23T22:00:00",
     status: "active",
     bidCount: 0,
+    isTrading: true,
   },
   {
     id: "a5",
@@ -333,12 +338,13 @@ export const mockAuctions: AuctionProduct[] = [
     sellerId: "user4",
     sellerName: "山田美咲",
     sellerRating: 4.9,
-    createdAt: "2024-01-12",
-    endTime: "2024-01-22T20:00:00",
+    createdAt: "2025-10-16",
+    endTime: "2025-10-27T20:00:00",
     status: "active",
     bidCount: 7,
     highestBidder: "user10",
     highestBidderName: "加藤翔太",
+    isTrading: true,
   },
   {
     id: "a6",
@@ -353,10 +359,11 @@ export const mockAuctions: AuctionProduct[] = [
     sellerId: "user5",
     sellerName: "高橋健太",
     sellerRating: 4.9,
-    createdAt: "2024-01-17",
-    endTime: "2024-01-23T21:00:00",
+    createdAt: "2025-10-21",
+    endTime: "2025-10-28T21:00:00",
     status: "active",
     bidCount: 0,
+    isTrading: false,
   },
   {
     id: "a7",
@@ -370,12 +377,13 @@ export const mockAuctions: AuctionProduct[] = [
     sellerId: "user1",
     sellerName: "田中太郎",
     sellerRating: 4.8,
-    createdAt: "2024-01-16",
-    endTime: "2024-01-20T19:00:00",
+    createdAt: "2025-10-20",
+    endTime: "2025-10-25T19:00:00",
     status: "active",
     bidCount: 3,
     highestBidder: "user11",
     highestBidderName: "木村陽子",
+    isTrading: true,
   },
   {
     id: "a8",
@@ -390,10 +398,11 @@ export const mockAuctions: AuctionProduct[] = [
     sellerId: "user3",
     sellerName: "鈴木一郎",
     sellerRating: 4.5,
-    createdAt: "2024-01-17",
-    endTime: "2024-01-24T20:00:00",
+    createdAt: "2025-10-21",
+    endTime: "2025-10-29T20:00:00",
     status: "active",
     bidCount: 0,
+    isTrading: true,
   },
 ]
 
@@ -405,7 +414,7 @@ export const mockBids: Record<string, Bid[]> = {
       bidderId: "user6",
       bidderName: "伊藤さくら",
       amount: 45000,
-      timestamp: "2024-01-17T14:30:00",
+      timestamp: "2025-10-22T14:30:00",
     },
     {
       id: "b2",
@@ -413,7 +422,7 @@ export const mockBids: Record<string, Bid[]> = {
       bidderId: "user7",
       bidderName: "中村優子",
       amount: 42000,
-      timestamp: "2024-01-17T12:15:00",
+      timestamp: "2025-10-22T12:15:00",
     },
     {
       id: "b3",
@@ -421,7 +430,7 @@ export const mockBids: Record<string, Bid[]> = {
       bidderId: "user8",
       bidderName: "小林大輔",
       amount: 40000,
-      timestamp: "2024-01-17T10:00:00",
+      timestamp: "2025-10-22T10:00:00",
     },
     {
       id: "b4",
@@ -429,7 +438,7 @@ export const mockBids: Record<string, Bid[]> = {
       bidderId: "user9",
       bidderName: "渡辺真理",
       amount: 38000,
-      timestamp: "2024-01-17T08:20:00",
+      timestamp: "2025-10-22T08:20:00",
     },
     {
       id: "b5",
@@ -437,7 +446,7 @@ export const mockBids: Record<string, Bid[]> = {
       bidderId: "user10",
       bidderName: "加藤翔太",
       amount: 35000,
-      timestamp: "2024-01-16T22:10:00",
+      timestamp: "2025-10-21T22:10:00",
     },
   ],
   a2: [
@@ -447,7 +456,7 @@ export const mockBids: Record<string, Bid[]> = {
       bidderId: "user7",
       bidderName: "中村優子",
       amount: 3200,
-      timestamp: "2024-01-16T16:45:00",
+      timestamp: "2025-10-21T16:45:00",
     },
     {
       id: "b7",
@@ -455,7 +464,7 @@ export const mockBids: Record<string, Bid[]> = {
       bidderId: "user9",
       bidderName: "渡辺真理",
       amount: 2800,
-      timestamp: "2024-01-16T14:20:00",
+      timestamp: "2025-10-21T14:20:00",
     },
     {
       id: "b8",
@@ -463,7 +472,7 @@ export const mockBids: Record<string, Bid[]> = {
       bidderId: "user11",
       bidderName: "木村陽子",
       amount: 2500,
-      timestamp: "2024-01-16T11:30:00",
+      timestamp: "2025-10-21T11:30:00",
     },
   ],
   a5: [
@@ -473,7 +482,7 @@ export const mockBids: Record<string, Bid[]> = {
       bidderId: "user10",
       bidderName: "加藤翔太",
       amount: 12500,
-      timestamp: "2024-01-17T13:00:00",
+      timestamp: "2025-10-22T13:00:00",
     },
     {
       id: "b10",
@@ -481,7 +490,7 @@ export const mockBids: Record<string, Bid[]> = {
       bidderId: "user6",
       bidderName: "伊藤さくら",
       amount: 11000,
-      timestamp: "2024-01-17T09:45:00",
+      timestamp: "2025-10-22T09:45:00",
     },
     {
       id: "b11",
@@ -489,7 +498,7 @@ export const mockBids: Record<string, Bid[]> = {
       bidderId: "user8",
       bidderName: "小林大輔",
       amount: 10000,
-      timestamp: "2024-01-16T20:30:00",
+      timestamp: "2025-10-21T20:30:00",
     },
   ],
   a7: [
@@ -499,7 +508,7 @@ export const mockBids: Record<string, Bid[]> = {
       bidderId: "user11",
       bidderName: "木村陽子",
       amount: 2400,
-      timestamp: "2024-01-17T11:20:00",
+      timestamp: "2025-10-22T11:20:00",
     },
     {
       id: "b13",
@@ -507,7 +516,7 @@ export const mockBids: Record<string, Bid[]> = {
       bidderId: "user9",
       bidderName: "渡辺真理",
       amount: 2100,
-      timestamp: "2024-01-17T08:15:00",
+      timestamp: "2025-10-22T08:15:00",
     },
   ],
 }

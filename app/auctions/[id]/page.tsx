@@ -77,6 +77,11 @@ export default function AuctionDetailPage({ params }: { params: Promise<{ id: st
     router.push(`/chat/${auction.id}`)
   }
 
+  const incrementBid = (amount: number) => {
+    const currentValue = bidAmount ? Number.parseInt(bidAmount) : minBid
+    setBidAmount((currentValue + amount).toString())
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -141,7 +146,7 @@ export default function AuctionDetailPage({ params }: { params: Promise<{ id: st
               </CardContent>
             </Card>
 
-            {!timeRemaining.isEnded && auction.status === "active" ? (
+            {auction.isTrading && !timeRemaining.isEnded && auction.status === "active" ? (
               <Card>
                 <CardContent className="p-6 space-y-4">
                   <div>
@@ -150,17 +155,50 @@ export default function AuctionDetailPage({ params }: { params: Promise<{ id: st
                       <Input
                         id="bid-amount"
                         type="number"
-                        placeholder={`¥${minBid.toLocaleString()}以上`}
+                        placeholder={`¥${minBid.toLocaleString()}`}
                         value={bidAmount}
                         onChange={(e) => setBidAmount(e.target.value)}
                         min={minBid}
                       />
-                      <Button onClick={handleBid} disabled={!bidAmount || Number.parseInt(bidAmount) < minBid}>
+                      <Button
+                        onClick={handleBid}
+                        disabled={!bidAmount || Number.parseInt(bidAmount) < minBid}
+                      >
                         <Gavel className="h-4 w-4 mr-2" />
                         入札
                       </Button>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-2">最低入札額: ¥{minBid.toLocaleString()}</p>
+
+                    <div className="flex gap-2 mt-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => incrementBid(100)}
+                        className="flex-1"
+                      >
+                        +100円
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => incrementBid(500)}
+                        className="flex-1"
+                      >
+                        +500円
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => incrementBid(1000)}
+                        className="flex-1"
+                      >
+                        +1,000円
+                      </Button>
+                    </div>
+
+                    <p className="text-xs text-muted-foreground mt-2">
+                      最低入札額: ¥{minBid.toLocaleString()} (100円単位)
+                    </p>
                   </div>
 
                   {showSuccess && (
@@ -175,7 +213,7 @@ export default function AuctionDetailPage({ params }: { params: Promise<{ id: st
                         <span className="text-sm text-muted-foreground">即決価格</span>
                         <span className="text-2xl font-bold">¥{auction.buyNowPrice.toLocaleString()}</span>
                       </div>
-                      <Button onClick={handleBuyNow} variant="secondary" className="w-full">
+                      <Button onClick={handleBuyNow} variant="default" className="w-full" size="lg">
                         即決で購入
                       </Button>
                     </div>
@@ -186,7 +224,7 @@ export default function AuctionDetailPage({ params }: { params: Promise<{ id: st
               <Card>
                 <CardContent className="p-6">
                   <div className="text-center space-y-4">
-                    <p className="text-lg font-semibold">オークションが終了しました</p>
+                    <p className="text-lg font-semibold">オークションが終了しました。</p>
                     {auction.highestBidderName && (
                       <div>
                         <p className="text-muted-foreground mb-4">
