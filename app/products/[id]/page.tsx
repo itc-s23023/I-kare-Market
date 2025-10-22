@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { use, useState } from "react"
 import { Header } from "@/components/header"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -22,10 +22,11 @@ const conditionLabels = {
 export default function ProductDetailPage({
   params,
 }: {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }) {
-  const product = mockProducts.find((p) => p.id === params.id)
-  const [isLiked, setIsLiked] = useState(mockLikedProducts.includes(params.id))
+  const { id } = use(params)
+  const product = mockProducts.find((p) => p.id === id)
+  const [isLiked, setIsLiked] = useState(mockLikedProducts.includes(id))
 
   if (!product) {
     notFound()

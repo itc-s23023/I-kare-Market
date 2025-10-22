@@ -1,4 +1,5 @@
 "use client"
+import { use } from "react"
 
 import { useState } from "react"
 import { Header } from "@/components/header"
@@ -37,13 +38,14 @@ function getTimeRemaining(endTime: string) {
   return { text: `${minutes}分`, isEnded: false }
 }
 
-export default function AuctionDetailPage({ params }: { params: { id: string } }) {
+export default function AuctionDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter()
-  const auction = mockAuctions.find((a) => a.id === params.id)
-  const bids = mockBids[params.id] || []
+  const { id } = use(params)
+  const auction = mockAuctions.find((a) => a.id === id)
+  const bids = mockBids[id] || []
   const [bidAmount, setBidAmount] = useState("")
   const [showSuccess, setShowSuccess] = useState(false)
-  const [isLiked, setIsLiked] = useState(mockLikedProducts.includes(params.id))
+  const [isLiked, setIsLiked] = useState(mockLikedProducts.includes(id))
 
   if (!auction) {
     notFound()

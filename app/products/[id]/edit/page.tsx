@@ -10,8 +10,9 @@ import Link from "next/link"
 import { mockProducts } from "@/lib/mock-data"
 import { notFound } from "next/navigation"
 
-export default function EditProductPage({ params }: { params: { id: string } }) {
-  const product = mockProducts.find((p) => p.id === params.id)
+export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  const product = mockProducts.find((p) => p.id === id)
 
   if (!product) {
     notFound()

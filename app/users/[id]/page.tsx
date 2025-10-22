@@ -15,20 +15,18 @@ const conditionLabels = {
   fair: "可",
 }
 
-export default function UserProfilePage({ params }: { params: { id: string } }) {
-  const user = mockUsers.find((u) => u.id === params.id)
+export default async function UserProfilePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+
+  const user = mockUsers.find((u) => u.id === id)
 
   if (!user) {
     notFound()
   }
 
-  // ユーザーの出品中の商品を取得
-  const userProducts = mockProducts.filter((p) => p.sellerId === params.id && p.status === "available")
-
-  // ユーザーの出品中のオークションを取得
-  const userAuctions = mockAuctions.filter((a) => a.sellerId === params.id && a.status === "active")
-
-  const transactionCount = userTransactionCounts[params.id] || 0
+  const userProducts = mockProducts.filter((p) => p.sellerId === id && p.status === "available")
+  const userAuctions = mockAuctions.filter((a) => a.sellerId === id && a.status === "active")
+  const transactionCount = userTransactionCounts[id] || 0
 
   return (
     <div className="min-h-screen bg-background">
