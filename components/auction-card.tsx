@@ -1,19 +1,16 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Clock, TrendingUp, User, Heart } from "lucide-react"
 import Image from "next/image"
-// ...existing code...
-import type { AuctionProduct } from "@/lib/mock-data"
-import { mockLikedProducts } from "@/lib/mock-data"
+import type { Auction } from "@/hooks/useAuctions"
 
 interface AuctionCardProps {
-  auction: AuctionProduct
+  auction: Auction
 }
 
 function getTimeRemaining(endTime: string) {
@@ -36,7 +33,7 @@ export function AuctionCard({ auction }: AuctionCardProps) {
   const timeRemaining = getTimeRemaining(auction.endTime)
   const isEnding = timeRemaining.includes("時間") || timeRemaining.includes("分")
   const hasNoBids = auction.bidCount === 0
-  const [isLiked, setIsLiked] = useState(mockLikedProducts.includes(auction.id))
+  const [isLiked, setIsLiked] = useState(false)
 
   const handleLikeClick = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -46,7 +43,17 @@ export function AuctionCard({ auction }: AuctionCardProps) {
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow h-full flex flex-col">
       <div className="aspect-square relative overflow-hidden bg-muted">
-        <Image src={auction.images[0] || "/placeholder.svg"} alt={auction.title} fill className="object-cover" />
+        <Image 
+          src={auction.images[0] || "/placeholder.svg"} 
+          alt={auction.title} 
+          fill 
+          className="object-cover"
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+          onError={(e) => {
+            const target = e.target as HTMLImageElement;
+            target.src = "/placeholder.svg";
+          }}
+        />
         <Button
           size="icon"
           variant="secondary"
