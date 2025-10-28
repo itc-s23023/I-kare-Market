@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Bell, Plus, User, Menu, Gavel, ShoppingBag, LogIn, LogOut } from "lucide-react"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
@@ -43,11 +44,20 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center gap-4 px-4">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold">
-            学
+        <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+          <div className="relative h-10 w-auto">
+            <Image
+              src="/college-logo.png2"
+              alt="フジ学園専門学校 ITカレッジ沖縄"
+              width={35}
+              height={9}
+              className="object-contain"
+              priority
+            />
           </div>
-          <span className="font-bold text-lg hidden sm:inline-block">学内マーケット</span>
+          <span className="font-bold text-2xl hidden lg:inline-block bg-gradient-to-r from-orange-500 to-orange-600 bg-clip-text text-transparent">
+            アイカレマーケット
+          </span>
         </Link>
 
         <nav className="hidden md:flex items-center gap-2 ml-auto">
