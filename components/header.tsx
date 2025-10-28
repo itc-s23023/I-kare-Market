@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Bell, Plus, User, Menu, Gavel, ShoppingBag, LogIn, LogOut } from "lucide-react"
+import { Bell, Plus, User, Menu, Gavel, ShoppingBag, LogIn, LogOut, Phone } from "lucide-react"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
@@ -142,7 +142,7 @@ export function Header() {
                 </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link href="/contact">
-                      <User className="h-4 w-4 mr-2" />
+                      <Phone className="h-4 w-4 mr-2" />
                       お問い合わせ
                     </Link>
                   </DropdownMenuItem>
