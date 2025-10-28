@@ -1,5 +1,6 @@
 import { Header } from "@/components/header"
 import { ProductCard } from "@/components/product-card"
+import { TopSellers } from "@/components/top-sellers"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { Input } from "@/components/ui/input"
@@ -48,7 +49,10 @@ export default function HomePage() {
             </Button>
           </div>
         )}
-      
+        
+        <div className="mt-12">
+          <TopSellers />
+        </div>
       
       </main>
     </div>
