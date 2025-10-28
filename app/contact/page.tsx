@@ -1,12 +1,15 @@
+
 'use client';
 
 import React, { useState } from 'react';
+import { useAuth } from '@/components/auth-provider';
 
 export default function ContactPage() {
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const { user } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,7 +25,11 @@ export default function ContactPage() {
       const res = await fetch('/api/contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subject, message }),
+        body: JSON.stringify({
+          subject,
+          message,
+          sender: user?.email || '',
+        }),
       });
       const data = await res.json();
       if (data.success) {

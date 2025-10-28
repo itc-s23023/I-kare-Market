@@ -2,11 +2,12 @@ import { NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
 
 export async function POST(request: Request) {
-  const { subject, message } = await request.json();
+  const { subject, message, sender } = await request.json();
 
   if (!subject || !message) {
     return NextResponse.json({ error: '件名と内容は必須です' }, { status: 400 });
   }
+  // senderは空でもOK（未ログイン時）
 
   const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
@@ -23,7 +24,7 @@ export async function POST(request: Request) {
       from: process.env.SMTP_USER,
       to: process.env.ADMIN_EMAIL,
       subject,
-      text: message,
+      text: `送信者: ${sender || '未ログイン'}\n件名: ${subject}\n内容: ${message}`,
     });
     return NextResponse.json({ success: true });
   } catch (error: any) {
