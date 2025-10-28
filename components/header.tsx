@@ -17,7 +17,7 @@ export function Header() {
   const router = useRouter()
   const pathname = usePathname()
   const { user, loading } = useAuth()
-  const unreadCount = mockNotifications.filter((n) => !n.read).length
+  const unreadCount = (mockNotifications || []).filter((n) => !n.read).length
 
   const isAuctionPage = pathname?.startsWith("/auctions")
 
@@ -93,10 +93,10 @@ export function Header() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-80">
                 <div className="px-2 py-1.5 text-sm font-semibold">通知</div>
-                {mockNotifications.length === 0 ? (
+                {(mockNotifications || []).length === 0 ? (
                   <div className="px-2 py-8 text-center text-sm text-muted-foreground">通知はありません</div>
                 ) : (
-                  mockNotifications.map((notification) => (
+                  (mockNotifications || []).map((notification) => (
                     <DropdownMenuItem
                       key={notification.id}
                       className="flex flex-col items-start gap-1 p-3 cursor-pointer"
@@ -206,12 +206,6 @@ export function Header() {
 
               {user ? (
                 <>
-                  <Button asChild className="w-full justify-start">
-                    <Link href={sellLink}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      出品する
-                    </Link>
-                  </Button>
                   <Button asChild variant="ghost" className="w-full justify-start relative">
                     <Link href="/profile">
                       <Bell className="h-4 w-4 mr-2" />
