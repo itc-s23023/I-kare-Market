@@ -1,5 +1,5 @@
 "use client"
-import { use, useState } from "react"
+import { use, useState, useRef, useEffect } from "react"
 import { Header } from "@/components/header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -37,15 +37,81 @@ export default function ChatPage({
       }
     }
   }
-  const [messages, setMessages] = useState([
+  type Message = {
+    id: string
+    senderId: string
+    senderName: string
+    content: string
+    timestamp: string
+  }
+  const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
-      senderId: product?.sellerId || "",
-      senderName: product?.sellerName || "",
+      senderId: product?.sellerId || "seller-001",
+      senderName: product?.sellerName || "山田太郎",
       content: "こんにちは！商品に興味を持っていただきありがとうございます。",
       timestamp: "2024-01-15 10:30",
     },
+    {
+      id: "2",
+      senderId: "user-002",
+      senderName: "佐藤花子",
+      content: "はじめまして。商品の状態を教えてください。",
+      timestamp: "2024-01-15 10:32",
+    },
+    {
+      id: "3",
+      senderId: product?.sellerId || "seller-001",
+      senderName: product?.sellerName || "山田太郎",
+      content: "目立った傷はありません。写真も追加できます。",
+      timestamp: "2024-01-15 10:35",
+    },
+    {
+      id: "4",
+      senderId: "user-002",
+      senderName: "佐藤花子",
+      content: "ありがとうございます！検討します。",
+      timestamp: "2024-01-15 10:36",
+    },
+    {
+      id: "5",
+      senderId: "user-002",
+      senderName: "佐藤花子",
+      content: "翌日になりました。まだ購入可能ですか？",
+      timestamp: "2024-01-16 09:10",
+    },
+    {
+      id: "6",
+      senderId: product?.sellerId || "seller-001",
+      senderName: product?.sellerName || "山田太郎",
+      content: "はい、まだ購入可能です。",
+      timestamp: "2024-01-16 09:12",
+    },
+    {
+      id: "7",
+      senderId: "user-002",
+      senderName: "佐藤花子",
+      content: "ありがとうございます。購入手続きします！",
+      timestamp: "2024-01-16 09:15",
+    },
   ])
+  // メッセージを日付ごとにグループ化する関数
+  function groupMessagesByDate(messages: Message[]): { [date: string]: Message[] } {
+    const groups: { [date: string]: Message[] } = {}
+    messages.forEach((msg: Message) => {
+      // timestampが"YYYY-MM-DD HH:mm"形式なので、日付部分だけ抽出
+      const date = msg.timestamp.slice(0, 10)
+      if (!groups[date]) groups[date] = []
+      groups[date].push(msg)
+    })
+    return groups
+  }
+
+  // 最新メッセージへの自動スクロール
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }, [messages])
   const [newMessage, setNewMessage] = useState("")
   const [transactionStatus, setTransactionStatus] = useState<"negotiating" | "agreed" | "completed">("negotiating")
 
@@ -124,28 +190,51 @@ export default function ChatPage({
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4 mb-4 max-h-96 overflow-y-auto">
-                {messages.map((message) => {
-                  const isCurrentUser = message.senderId === mockUser.id
-                  return (
-                    <div key={message.id} className={`flex gap-3 ${isCurrentUser ? "flex-row-reverse" : ""}`}>
-                      <Avatar className="h-8 w-8 shrink-0">
-                        <AvatarImage src="/diverse-user-avatars.png" />
-                        <AvatarFallback>{message.senderName[0]}</AvatarFallback>
-                      </Avatar>
-                      <div className={`flex-1 ${isCurrentUser ? "items-end" : "items-start"} flex flex-col`}>
-                        <div
-                          className={`rounded-lg px-4 py-2 max-w-[80%] ${
-                            isCurrentUser ? "bg-primary text-primary-foreground" : "bg-muted"
-                          }`}
-                        >
-                          <p className="text-sm leading-relaxed">{message.content}</p>
-                        </div>
-                        <span className="text-xs text-muted-foreground mt-1">{message.timestamp}</span>
-                      </div>
+              <div className="space-y-4 mb-4 max-h-96 overflow-y-auto bg-white">
+                {Object.entries(groupMessagesByDate(messages)).map(([date, msgs]) => (
+                  <div key={date}>
+                    {/* 日付区切り線（Slack風） */}
+                    <div className="flex items-center my-6">
+                      <div className="flex-grow border-t border-gray-300"></div>
+                      <span className="mx-4 text-xs text-gray-500 bg-white px-2 py-1 rounded shadow-sm">{date}</span>
+                      <div className="flex-grow border-t border-gray-300"></div>
                     </div>
-                  )
-                })}
+                    {/* メッセージ本体 */}
+                    {msgs.map((message: Message) => {
+                      // 自分のID（仮）
+                      const myId = "user-002" // ←必要に応じてmockUser.id等に置換
+                      const isCurrentUser = message.senderId === myId
+                      // 時間だけ抽出
+                      let time = ""
+                      const match = message.timestamp.match(/\d{2}:\d{2}/)
+                      if (match) time = match[0]
+                      return (
+                        <div
+                          key={message.id}
+                          className={`flex gap-3 items-end ${isCurrentUser ? "justify-end flex-row-reverse" : "justify-start"}`}
+                        >
+                          <Avatar className="h-8 w-8 shrink-0">
+                            <AvatarImage src="/diverse-user-avatars.png" />
+                            <AvatarFallback>{message.senderName[0]}</AvatarFallback>
+                          </Avatar>
+                          <div className={`flex-1 flex flex-col ${isCurrentUser ? "items-end" : "items-start"}`}>
+                            <div
+                              className={`rounded-lg px-4 py-2 max-w-[80%] shadow ${
+                                isCurrentUser
+                                  ? "bg-blue-500 text-white border border-blue-400"
+                                  : "bg-gray-100 text-gray-900 border border-gray-300"
+                              }`}
+                            >
+                              <p className="text-sm leading-relaxed">{message.content}</p>
+                            </div>
+                            <span className="text-xs text-muted-foreground mt-1">{time}</span>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                ))}
+                <div ref={messagesEndRef} />
               </div>
 
               {transactionStatus === "negotiating" && (
