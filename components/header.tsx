@@ -140,6 +140,12 @@ export function Header() {
                     マイページ
                   </Link>
                 </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/contact">
+                      <User className="h-4 w-4 mr-2" />
+                      お問い合わせ
+                    </Link>
+                  </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleSignOut}>
                   <LogOut className="h-4 w-4 mr-2" />
