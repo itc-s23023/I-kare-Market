@@ -42,19 +42,37 @@ export default function HomePage() {
 
       <main className="container max-w-7xl mx-auto px-4 py-8">
         <div className="mb-8">
-          <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-4">
-            <div>
-              <h1 className="text-3xl font-bold mb-2">学内で不要なものを売買しよう</h1>
-              <p className="text-muted-foreground">学生同士で安心・安全に取引できるマーケットプレイス</p>
+          <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-6">
+            <div className="space-y-3">
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-orange-500 to-orange-600 bg-clip-text text-transparent">
+                学内で不要なものを売買しよう
+              </h1>
+              <p className="text-lg text-muted-foreground max-w-2xl">
+                学生同士で安心・安全に取引できるマーケットプレイス
+              </p>
+              <div className="flex flex-wrap gap-3 pt-2">
+                <div className="flex items-center gap-2 bg-orange-50 dark:bg-orange-950/20 px-3 py-1.5 rounded-full text-sm">
+                  <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                  <span className="text-orange-700 dark:text-orange-300 font-medium">学内限定</span>
+                </div>
+                <div className="flex items-center gap-2 bg-green-50 dark:bg-green-950/20 px-3 py-1.5 rounded-full text-sm">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span className="text-green-700 dark:text-green-300 font-medium">安心取引</span>
+                </div>
+                <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-950/20 px-3 py-1.5 rounded-full text-sm">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  <span className="text-blue-700 dark:text-blue-300 font-medium">簡単出品</span>
+                </div>
+              </div>
             </div>
           </div>
           
           {!loading && !error && (
-            <div className="text-sm text-muted-foreground">
+            <div className="text-sm text-muted-foreground bg-muted/50 px-4 py-2 rounded-lg inline-block">
               {searchTerm ? (
-                <p>「{searchTerm}」の検索結果: {filteredProducts.length}件</p>
+                <p>「{searchTerm}」の検索結果: <span className="font-semibold text-primary">{filteredProducts.length}件</span></p>
               ) : (
-                <p>全{products.length}件の商品が出品中</p>
+                <p>全<span className="font-semibold text-primary">{products.length}件</span>の商品が出品中</p>
               )}
             </div>
           )}
