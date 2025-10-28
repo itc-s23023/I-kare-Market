@@ -1,191 +1,345 @@
 "use client"
 
-import type React from "react"
-
+import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Header } from "@/components/header"
+import { ImageUpload } from "@/components/image-upload"
+import { useAuctionSubmit } from "@/hooks/useAuctions"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
-import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { CalendarIcon, Upload, X } from "lucide-react"
-import { useState } from "react"
-import { format } from "date-fns"
-import { ja } from "date-fns/locale"
-import { cn } from "@/lib/utils"
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage"
+import { storage } from "@/components/firebaseConfig"
 
 export default function AuctionSellPage() {
-  const [images, setImages] = useState<string[]>([])
-  const [endDate, setEndDate] = useState<Date>()
-  const [enableBuyNow, setEnableBuyNow] = useState(false)
+  const router = useRouter()
+  const { submitAuction, isSubmitting, user } = useAuctionSubmit()
+  
+  const [title, setTitle] = useState("")
+  const [description, setDescription] = useState("")
+  const [startingPrice, setStartingPrice] = useState("")
+  const [buyNowPrice, setBuyNowPrice] = useState("")
+  const [endDate, setEndDate] = useState("")
+  const [endTime, setEndTime] = useState("")
+  const [category, setCategory] = useState("")
+  const [condition, setCondition] = useState("")
+  const [selectedImages, setSelectedImages] = useState<File[]>([])
+  
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (files) {
-      const newImages = Array.from(files).map((file) => URL.createObjectURL(file))
-      setImages([...images, ...newImages].slice(0, 5))
+  const uploadImages = async (files: File[]) => {
+    console.log("🔄 画像アップロード開始:", files.length, "枚")
+    
+    const uploadPromises = files.map(async (file, index) => {
+      try {
+        const timestamp = Date.now()
+        const randomId = Math.random().toString(36).substring(2, 15)
+        const fileExtension = file.name.split('.').pop() || 'jpg'
+        const fileName = `${timestamp}_${randomId}.${fileExtension}`
+        const fileRef = ref(storage, `auctions/${fileName}`)
+        
+        const metadata = {
+          contentType: file.type,
+          customMetadata: {
+            'uploadedBy': user?.uid || 'anonymous',
+            'originalName': file.name
+          }
+        }
+        
+        const snapshot = await uploadBytes(fileRef, file, metadata)
+        const downloadURL = await getDownloadURL(snapshot.ref)
+        console.log(`✅ 画像${index + 1}のURL取得完了:`, downloadURL)
+        
+        return downloadURL
+      } catch (error: any) {
+        console.error(`❌ 画像${index + 1}のアップロードエラー:`, error)
+        throw new Error(`画像のアップロードに失敗しました: ${error.message}`)
+      }
+    })
+    
+    const results = await Promise.all(uploadPromises)
+    console.log(`🎉 全画像アップロード完了:`, results)
+    return results
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    setSuccess(null)
+    
+    console.log("=== オークション出品開始 ===")
+    
+    try {
+      // バリデーション
+      if (!title || !description || !startingPrice || !endDate || !endTime) {
+        throw new Error("必須項目を入力してください")
+      }
+      
+      if (Number(startingPrice) <= 0) {
+        throw new Error("開始価格は0円より大きく設定してください")
+      }
+      
+      if (buyNowPrice && Number(buyNowPrice) <= Number(startingPrice)) {
+        throw new Error("即決価格は開始価格より大きく設定してください")
+      }
+      
+      // 終了日時の作成
+      const endDateTime = new Date(`${endDate}T${endTime}`)
+      if (endDateTime <= new Date()) {
+        throw new Error("終了日時は現在時刻より後に設定してください")
+      }
+      
+      // 画像アップロード
+      let imageUrls: string[] = []
+      if (selectedImages.length > 0) {
+        try {
+          console.log("画像アップロード処理開始")
+          imageUrls = await uploadImages(selectedImages)
+          console.log("全画像アップロード完了:", imageUrls)
+        } catch (uploadError: any) {
+          console.warn("画像アップロードに失敗:", uploadError)
+          throw new Error("画像のアップロードに失敗しました")
+        }
+      }
+      
+      // オークション出品
+      const auctionData = {
+        title,
+        description,
+        startingPrice: Number(startingPrice),
+        buyNowPrice: buyNowPrice ? Number(buyNowPrice) : undefined,
+        endTime: endDateTime.toISOString(),
+        images: imageUrls,
+        category: category || "other",
+        condition: condition || "good"
+      }
+      
+      const result = await submitAuction(auctionData)
+      
+      if (result.success) {
+        setSuccess(result.message)
+        console.log("✅ オークション出品成功")
+        
+        // 3秒後にオークション一覧にリダイレクト
+        setTimeout(() => {
+          router.push("/auctions")
+        }, 3000)
+      }
+    } catch (error: any) {
+      const errorMessage = error instanceof Error ? error.message : "オークション出品に失敗しました"
+      console.error("❌ オークション出品エラー:", errorMessage)
+      setError(errorMessage)
     }
   }
 
-  const removeImage = (index: number) => {
-    setImages(images.filter((_, i) => i !== index))
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="container mx-auto px-4 py-8">
+          <div className="max-w-2xl mx-auto">
+            <Card>
+              <CardContent className="p-6 text-center">
+                <p className="mb-4">オークションを出品するにはログインが必要です</p>
+                <Button asChild>
+                  <a href="/login">ログインページへ</a>
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </main>
+      </div>
+    )
   }
 
   return (
     <div className="min-h-screen bg-background">
       <Header />
-
       <main className="container mx-auto px-4 py-8">
-        <div className="max-w-3xl mx-auto">
-          <div className="mb-8">
-            <h1 className="text-4xl font-bold mb-2">オークションに出品</h1>
-            <p className="text-muted-foreground">商品情報を入力してオークションを開始しましょう</p>
-          </div>
+        <div className="max-w-2xl mx-auto">
+          <h1 className="text-3xl font-bold mb-2">オークション出品</h1>
+          <p className="text-muted-foreground mb-8">
+            商品をオークション形式で出品しましょう
+          </p>
+          <p className="text-sm text-muted-foreground mb-6">
+            出品者: {user.displayName} (ID: {user.uid})
+          </p>
 
-          <form className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>商品画像</CardTitle>
-                <CardDescription>最大5枚まで画像をアップロードできます</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-5 gap-4">
-                  {images.map((image, index) => (
-                    <div key={index} className="relative aspect-square rounded-lg overflow-hidden bg-muted">
-                      <img
-                        src={image || "/placeholder.svg"}
-                        alt={`商品画像 ${index + 1}`}
-                        className="object-cover w-full h-full"
-                      />
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="icon"
-                        className="absolute top-1 right-1 h-6 w-6"
-                        onClick={() => removeImage(index)}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  ))}
-                  {images.length < 5 && (
-                    <label className="aspect-square rounded-lg border-2 border-dashed border-muted-foreground/25 hover:border-muted-foreground/50 transition-colors cursor-pointer flex items-center justify-center">
-                      <div className="text-center">
-                        <Upload className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground">画像追加</span>
-                      </div>
-                      <input type="file" accept="image/*" multiple className="hidden" onChange={handleImageUpload} />
-                    </label>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>基本情報</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="title">商品名</Label>
-                  <Input id="title" placeholder="例: iPad Air 第5世代 64GB" />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="condition">商品の状態</Label>
-                  <Select>
-                    <SelectTrigger id="condition">
-                      <SelectValue placeholder="状態を選択" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="new">新品・未使用</SelectItem>
-                      <SelectItem value="like-new">未使用に近い</SelectItem>
-                      <SelectItem value="good">目立った傷や汚れなし</SelectItem>
-                      <SelectItem value="fair">やや傷や汚れあり</SelectItem>
-                      <SelectItem value="poor">傷や汚れあり</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="description">商品説明</Label>
-                  <Textarea
-                    id="description"
-                    placeholder="商品の詳細、使用状況、付属品などを記載してください"
-                    rows={6}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>オークション設定</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="starting-price">開始価格</Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">¥</span>
-                    <Input id="starting-price" type="number" placeholder="1000" className="pl-8" />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="end-date">終了日時</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        id="end-date"
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !endDate && "text-muted-foreground",
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {endDate ? format(endDate, "PPP", { locale: ja }) : "日付を選択"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar mode="single" selected={endDate} onSelect={setEndDate} initialFocus />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
-                <div className="flex items-center justify-between space-x-2 rounded-lg border p-4">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="buy-now">即決価格を設定</Label>
-                    <p className="text-sm text-muted-foreground">この価格で即座に落札できるようにします</p>
-                  </div>
-                  <Switch id="buy-now" checked={enableBuyNow} onCheckedChange={setEnableBuyNow} />
-                </div>
-
-                {enableBuyNow && (
-                  <div className="space-y-2">
-                    <Label htmlFor="buy-now-price">即決価格</Label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">¥</span>
-                      <Input id="buy-now-price" type="number" placeholder="5000" className="pl-8" />
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <div className="flex gap-4">
-              <Button type="button" variant="outline" className="flex-1 bg-transparent">
-                キャンセル
-              </Button>
-              <Button type="submit" className="flex-1">
-                オークションを開始
-              </Button>
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-800 text-sm">{error}</p>
             </div>
-          </form>
+          )}
+
+          {success && (
+            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <p className="text-green-800 text-sm">
+                {success} 3秒後にオークション一覧に移動します...
+              </p>
+            </div>
+          )}
+
+          <div className="space-y-6">
+            <ImageUpload 
+              onImagesChange={setSelectedImages}
+              maxImages={5}
+            />
+            
+            <Card>
+              <CardHeader>
+                <CardTitle>オークション情報</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div>
+                    <Label htmlFor="title">商品名 *</Label>
+                    <Input
+                      id="title"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      placeholder="商品名を入力してください"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="description">商品説明 *</Label>
+                    <Textarea
+                      id="description"
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      placeholder="商品の詳細な説明を入力してください"
+                      rows={4}
+                      required
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="category">カテゴリー</Label>
+                      <Select value={category} onValueChange={setCategory}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="選択してください" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="textbook">教科書</SelectItem>
+                          <SelectItem value="electronics">電子機器</SelectItem>
+                          <SelectItem value="stationery">文房具</SelectItem>
+                          <SelectItem value="clothing">衣類</SelectItem>
+                          <SelectItem value="other">その他</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="condition">商品の状態</Label>
+                      <Select value={condition} onValueChange={setCondition}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="選択してください" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="new">新品</SelectItem>
+                          <SelectItem value="like-new">未使用に近い</SelectItem>
+                          <SelectItem value="good">良好</SelectItem>
+                          <SelectItem value="fair">可</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="startingPrice">開始価格 (円) *</Label>
+                      <Input
+                        id="startingPrice"
+                        type="number"
+                        value={startingPrice}
+                        onChange={(e) => setStartingPrice(e.target.value)}
+                        placeholder="1000"
+                        min="1"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="buyNowPrice">即決価格 (円)</Label>
+                      <Input
+                        id="buyNowPrice"
+                        type="number"
+                        value={buyNowPrice}
+                        onChange={(e) => setBuyNowPrice(e.target.value)}
+                        placeholder="3000 (任意)"
+                        min="1"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="endDate">終了日 *</Label>
+                      <Input
+                        id="endDate"
+                        type="date"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        min={new Date().toISOString().split('T')[0]}
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="endTime">終了時刻 *</Label>
+                      <Input
+                        id="endTime"
+                        type="time"
+                        value={endTime}
+                        onChange={(e) => setEndTime(e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-4 pt-4">
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      className="flex-1" 
+                      onClick={() => router.back()}
+                      disabled={isSubmitting}
+                    >
+                      キャンセル
+                    </Button>
+                    <Button 
+                      type="submit"
+                      className="flex-1"
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? "出品中..." : "オークション出品"}
+                    </Button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+
+            {isSubmitting && (
+              <div className="text-center">
+                <div className="inline-flex items-center px-4 py-2 font-semibold leading-6 text-sm shadow rounded-md text-white bg-blue-500">
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  オークション出品処理中です...
+                </div>
+                <p className="text-sm text-muted-foreground mt-2">
+                  画像のアップロードとデータの保存を行っています。しばらくお待ちください。
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       </main>
     </div>

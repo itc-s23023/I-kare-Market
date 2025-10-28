@@ -1,312 +1,296 @@
 "use client"
-import { use, useState, useRef, useEffect } from "react"
-import { Header } from "@/components/header"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
-import { Send, Check } from "lucide-react"
-import { mockProducts, mockUser, mockAuctions } from "@/lib/mock-data"
-import Image from "next/image"
-import { notFound } from "next/navigation"
 
-export default function ChatPage({
-  params,
-}: {
-  params: Promise<{ productId: string }>
-}) {
-  const { productId } = use(params)
-  let product = mockProducts.find((p) => p.id === productId)
-  // auctionIdでアクセスされた場合はmockAuctionsから取得
-  if (!product) {
-    const auction = mockAuctions.find((a) => a.id === productId)
-    if (auction) {
-      product = {
-        id: auction.id,
-        title: auction.title,
-        price: auction.currentBid,
-        description: auction.description,
-        condition: auction.condition,
-        images: auction.images,
-        sellerId: auction.sellerId,
-        sellerName: auction.sellerName,
-        sellerRating: auction.sellerRating,
-        createdAt: auction.createdAt,
-        status: auction.status === "ended" ? "sold" : "available",
-      }
-    }
-  }
-  type Message = {
+import { useState, useEffect } from "react"
+import { useParams, useRouter } from "next/navigation"
+import { Header } from "@/components/header"
+import { useAuth } from "@/components/auth-provider"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { MessageCircle, Send, ArrowLeft, Package } from "lucide-react"
+import { doc, getDoc } from "firebase/firestore"
+import { db } from "@/components/firebaseConfig"
+import Link from "next/link"
+
+interface Product {
+  id: string
+  productname: string
+  image_url: string
+  price: number
+  sellerName: string
+  userid: string
+  status: string
+}
+
+export default function ChatPage() {
+  const params = useParams()
+  const router = useRouter()
+  const { user } = useAuth()
+  const productId = params.productId as string
+  
+  const [product, setProduct] = useState<Product | null>(null)
+  const [message, setMessage] = useState("")
+  const [messages, setMessages] = useState<Array<{
     id: string
     senderId: string
     senderName: string
-    content: string
+    message: string
     timestamp: string
-  }
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
-      senderId: product?.sellerId || "seller-001",
-      senderName: product?.sellerName || "山田太郎",
-      content: "こんにちは！商品に興味を持っていただきありがとうございます。",
-      timestamp: "2024-01-15 10:30",
-    },
-    {
-      id: "2",
-      senderId: "user-002",
-      senderName: "佐藤花子",
-      content: "はじめまして。商品の状態を教えてください。",
-      timestamp: "2024-01-15 10:32",
-    },
-    {
-      id: "3",
-      senderId: product?.sellerId || "seller-001",
-      senderName: product?.sellerName || "山田太郎",
-      content: "目立った傷はありません。写真も追加できます。",
-      timestamp: "2024-01-15 10:35",
-    },
-    {
-      id: "4",
-      senderId: "user-002",
-      senderName: "佐藤花子",
-      content: "ありがとうございます！検討します。",
-      timestamp: "2024-01-15 10:36",
-    },
-    {
-      id: "5",
-      senderId: "user-002",
-      senderName: "佐藤花子",
-      content: "翌日になりました。まだ購入可能ですか？",
-      timestamp: "2024-01-16 09:10",
-    },
-    {
-      id: "6",
-      senderId: product?.sellerId || "seller-001",
-      senderName: product?.sellerName || "山田太郎",
-      content: "はい、まだ購入可能です。",
-      timestamp: "2024-01-16 09:12",
-    },
-    {
-      id: "7",
-      senderId: "user-002",
-      senderName: "佐藤花子",
-      content: "ありがとうございます。購入手続きします！",
-      timestamp: "2024-01-16 09:15",
-    },
-  ])
-  // メッセージを日付ごとにグループ化する関数
-  function groupMessagesByDate(messages: Message[]): { [date: string]: Message[] } {
-    const groups: { [date: string]: Message[] } = {}
-    messages.forEach((msg: Message) => {
-      // timestampが"YYYY-MM-DD HH:mm"形式なので、日付部分だけ抽出
-      const date = msg.timestamp.slice(0, 10)
-      if (!groups[date]) groups[date] = []
-      groups[date].push(msg)
-    })
-    return groups
-  }
+  }>>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  // 最新メッセージへの自動スクロール
-  const messagesEndRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages])
-  const [newMessage, setNewMessage] = useState("")
-  const [transactionStatus, setTransactionStatus] = useState<"negotiating" | "agreed" | "completed">("negotiating")
+    if (!productId) return
 
-  if (!product) {
-    notFound()
+    const fetchProduct = async () => {
+      try {
+        console.log("🔄 商品情報取得開始:", productId)
+        
+        const docRef = doc(db, "products", productId)
+        const docSnap = await getDoc(docRef)
+        
+        if (docSnap.exists()) {
+          const data = docSnap.data()
+          
+          const productData: Product = {
+            id: docSnap.id,
+            productname: String(data.productname || "商品名なし"),
+            image_url: String(data.image_url || "/placeholder.jpg"),
+            price: Number(data.price) || 0,
+            sellerName: String(data.sellerName || "匿名ユーザー"),
+            userid: String(data.userid || ""),
+            status: String(data.status || "active")
+          }
+          
+          setProduct(productData)
+          console.log("✅ 商品情報取得完了")
+        } else {
+          console.log("❌ 商品が見つかりません")
+          setError("商品が見つかりません")
+        }
+      } catch (error: any) {
+        console.error("❌ 商品情報取得エラー:", error)
+        setError(`商品情報の取得に失敗しました: ${error.message}`)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchProduct()
+  }, [productId])
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="container mx-auto px-4 py-8">
+          <div className="max-w-2xl mx-auto">
+            <Card>
+              <CardContent className="p-6 text-center">
+                <p className="mb-4">チャット機能を利用するにはログインが必要です</p>
+                <Button asChild>
+                  <Link href="/login">ログインページへ</Link>
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="container mx-auto px-4 py-8">
+          <div className="text-center py-16">
+            <div className="inline-flex items-center px-4 py-2 font-semibold leading-6 text-sm shadow rounded-md text-white bg-blue-500">
+              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              チャット情報を読み込み中...
+            </div>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
+  if (error || !product) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="container mx-auto px-4 py-8">
+          <div className="text-center py-16">
+            <div className="p-6 bg-red-50 border border-red-200 rounded-lg max-w-md mx-auto">
+              <h3 className="text-red-800 font-semibold mb-2">エラーが発生しました</h3>
+              <p className="text-red-600 text-sm mb-4">{error || "商品が見つかりません"}</p>
+              <Button onClick={() => router.back()} variant="outline">
+                戻る
+              </Button>
+            </div>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
+  const isOwner = user.uid === product.userid
+
+  if (isOwner) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="container mx-auto px-4 py-8">
+          <div className="max-w-2xl mx-auto">
+            <Card>
+              <CardContent className="p-6 text-center">
+                <p className="mb-4">自分の商品とはチャットできません</p>
+                <Button asChild variant="outline">
+                  <Link href={`/products/${productId}`}>商品詳細に戻る</Link>
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </main>
+      </div>
+    )
   }
 
   const handleSendMessage = () => {
-    if (!newMessage.trim()) return
+    if (!message.trim()) return
 
-    const message = {
-      id: Date.now().toString(),
-      senderId: mockUser.id,
-      senderName: mockUser.name,
-      content: newMessage,
-      timestamp: new Date().toLocaleString("ja-JP", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-    }
-
-    setMessages([...messages, message])
-    setNewMessage("")
-  }
-
-  const handleAgree = () => {
-    setTransactionStatus("agreed")
-  }
-
-  const handleComplete = () => {
-    setTransactionStatus("completed")
+    // 実際のチャット機能は今後実装
+    alert("チャット機能は準備中です")
+    setMessage("")
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <Header />
-
-      <main className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          <Card className="mb-6">
+      
+      <main className="flex-1 container mx-auto px-4 py-4">
+        <div className="max-w-4xl mx-auto h-full flex flex-col">
+          {/* チャットヘッダー */}
+          <Card className="mb-4">
             <CardContent className="p-4">
               <div className="flex items-center gap-4">
-                <div className="relative h-20 w-20 rounded-lg overflow-hidden bg-muted shrink-0">
-                  <Image
-                    src={product.images[0] || "/placeholder.svg"}
-                    alt={product.title}
-                    fill
-                    className="object-cover"
-                  />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => router.back()}
+                  className="shrink-0"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+                
+                <div className="flex items-center gap-3 flex-1">
+                  <div className="w-12 h-12 relative rounded-md overflow-hidden bg-muted">
+                    <img
+                      src={product.image_url}
+                      alt={product.productname}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = "/placeholder.svg";
+                      }}
+                    />
+                  </div>
+                  
+                  <div className="flex-1 min-w-0">
+                    <h2 className="font-semibold truncate">{product.productname}</h2>
+                    <p className="text-sm text-muted-foreground">
+                      出品者: {product.sellerName}
+                    </p>
+                    <p className="text-sm font-medium text-primary">
+                      ¥{product.price.toLocaleString()}
+                    </p>
+                  </div>
+                  
+                  <div className="shrink-0">
+                    <Badge variant={product.status === "sold" ? "secondary" : "default"}>
+                      {product.status === "sold" ? "売却済み" : "販売中"}
+                    </Badge>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <h2 className="font-semibold text-lg mb-1 truncate">{product.title}</h2>
-                  <p className="text-2xl font-bold text-primary">¥{product.price.toLocaleString()}</p>
-                </div>
-                {transactionStatus === "agreed" && (
-                  <Badge variant="secondary" className="shrink-0">
-                    取引合意済み
-                  </Badge>
-                )}
-                {transactionStatus === "completed" && <Badge className="shrink-0">取引完了</Badge>}
+                
+                <Button asChild variant="outline" size="sm">
+                  <Link href={`/products/${productId}`}>
+                    <Package className="h-4 w-4 mr-2" />
+                    商品詳細
+                  </Link>
+                </Button>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="mb-6">
+          {/* チャットエリア */}
+          <Card className="flex-1 flex flex-col">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src="/seller-avatar.png" />
-                  <AvatarFallback>{product.sellerName[0]}</AvatarFallback>
-                </Avatar>
-                {product.sellerName}とのチャット
+                <MessageCircle className="h-5 w-5" />
+                チャット
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4 mb-4 max-h-96 overflow-y-auto bg-white">
-                {Object.entries(groupMessagesByDate(messages)).map(([date, msgs]) => (
-                  <div key={date}>
-                    {/* 日付区切り線（Slack風） */}
-                    <div className="flex items-center my-6">
-                      <div className="flex-grow border-t border-gray-300"></div>
-                      <span className="mx-4 text-xs text-gray-500 bg-white px-2 py-1 rounded shadow-sm">{date}</span>
-                      <div className="flex-grow border-t border-gray-300"></div>
-                    </div>
-                    {/* メッセージ本体 */}
-                    {msgs.map((message: Message) => {
-                      // 自分のID（仮）
-                      const myId = "user-002" // ←必要に応じてmockUser.id等に置換
-                      const isCurrentUser = message.senderId === myId
-                      // 時間だけ抽出
-                      let time = ""
-                      const match = message.timestamp.match(/\d{2}:\d{2}/)
-                      if (match) time = match[0]
-                      return (
-                        <div
-                          key={message.id}
-                          className={`flex gap-3 items-end ${isCurrentUser ? "justify-end flex-row-reverse" : "justify-start"}`}
-                        >
-                          <Avatar className="h-8 w-8 shrink-0">
-                            <AvatarImage src="/diverse-user-avatars.png" />
-                            <AvatarFallback>{message.senderName[0]}</AvatarFallback>
-                          </Avatar>
-                          <div className={`flex-1 flex flex-col ${isCurrentUser ? "items-end" : "items-start"}`}>
-                            <div
-                              className={`rounded-lg px-4 py-2 max-w-[80%] shadow ${
-                                isCurrentUser
-                                  ? "bg-blue-500 text-white border border-blue-400"
-                                  : "bg-gray-100 text-gray-900 border border-gray-300"
-                              }`}
-                            >
-                              <p className="text-sm leading-relaxed">{message.content}</p>
-                            </div>
-                            <span className="text-xs text-muted-foreground mt-1">{time}</span>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                ))}
-                <div ref={messagesEndRef} />
+            
+            <CardContent className="flex-1 flex flex-col">
+              {/* メッセージ表示エリア */}
+              <div className="flex-1 mb-4 p-4 bg-muted/30 rounded-lg min-h-[300px] flex items-center justify-center">
+                <div className="text-center text-muted-foreground">
+                  <MessageCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p className="font-medium mb-2">チャット機能は準備中です</p>
+                  <p className="text-sm">
+                    現在、リアルタイムチャット機能を開発中です。<br />
+                    しばらくお待ちください。
+                  </p>
+                </div>
               </div>
 
-              {transactionStatus === "negotiating" && (
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="メッセージを入力..."
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault()
-                        handleSendMessage()
-                      }
-                    }}
-                  />
-                  <Button onClick={handleSendMessage} size="icon">
-                    <Send className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
+              {/* メッセージ入力エリア */}
+              <div className="flex gap-2">
+                <Input
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder="メッセージを入力..."
+                  onKeyPress={(e) => {
+                    if (e.key === "Enter") {
+                      handleSendMessage()
+                    }
+                  }}
+                  disabled
+                />
+                <Button 
+                  onClick={handleSendMessage}
+                  disabled={!message.trim()}
+                  size="icon"
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
+              </div>
+              
+              <div className="mt-2 text-xs text-muted-foreground">
+                チャット機能は現在開発中です
+              </div>
             </CardContent>
           </Card>
 
-          {transactionStatus === "negotiating" && (
-            <Card>
-              <CardContent className="p-6">
-                <h3 className="font-semibold mb-3">取引の進行</h3>
-                <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
-                  取引内容について双方が合意したら、「取引に合意する」ボタンを押してください。
-                </p>
-                <Button onClick={handleAgree} className="w-full">
-                  <Check className="h-4 w-4 mr-2" />
-                  取引に合意する
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-
-          {transactionStatus === "agreed" && (
-            <Card>
-              <CardContent className="p-6">
-                <h3 className="font-semibold mb-3">商品の受け取り</h3>
-                <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
-                  商品を受け取ったら、「取引を完了する」ボタンを押して、出品者を評価してください。
-                </p>
-                <Button onClick={handleComplete} className="w-full">
-                  <Check className="h-4 w-4 mr-2" />
-                  取引を完了する
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-
-          {transactionStatus === "completed" && (
-            <Card>
-              <CardContent className="p-6">
-                <h3 className="font-semibold mb-3">出品者を評価する</h3>
-                <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
-                  取引はいかがでしたか？出品者を評価してください。
-                </p>
-                <div className="flex gap-2 mb-4">
-                  {[1, 2, 3, 4, 5].map((rating) => (
-                    <Button key={rating} variant="outline" size="lg" className="flex-1 bg-transparent">
-                      {rating}
-                    </Button>
-                  ))}
-                </div>
-                <Input placeholder="コメントを入力（任意）" className="mb-4" />
-                <Button className="w-full">評価を送信</Button>
-              </CardContent>
-            </Card>
-          )}
+          {/* 取引に関する注意事項 */}
+          <Card className="mt-4">
+            <CardContent className="p-4">
+              <h3 className="font-medium mb-2 text-sm">取引時の注意事項</h3>
+              <div className="text-xs text-muted-foreground space-y-1">
+                <p>• 学内での直接取引を推奨しています</p>
+                <p>• 商品の状態や詳細は事前によく確認してください</p>
+                <p>• 個人情報の交換は慎重に行ってください</p>
+                <p>• トラブルがあった場合は運営まで報告してください</p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </main>
     </div>
