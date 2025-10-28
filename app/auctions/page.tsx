@@ -1,5 +1,6 @@
 import { Header } from "@/components/header"
 import { AuctionCard } from "@/components/auction-card"
+import { TopSellers } from "@/components/top-sellers"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { Search } from "lucide-react"
@@ -79,6 +80,10 @@ export default function AuctionsPage() {
               </div>
             </TabsContent>
           </Tabs>
+
+          <div className="mt-12">
+            <TopSellers />
+          </div>
         </div>
       </main>
     </div>

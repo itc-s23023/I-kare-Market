@@ -237,6 +237,15 @@ export const userTransactionCounts: Record<string, number> = {
   user5: 28,
 }
 
+// ユーザーごとの総売上（円）
+export const userTotalSales: Record<string, number> = {
+  user1: 125000,
+  user2: 98000,
+  user3: 156000,
+  user4: 134000,
+  user5: 87000,
+}
+
 export const mockAuctions: AuctionProduct[] = [
   {
     id: "a1",
