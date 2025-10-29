@@ -46,6 +46,7 @@ export default function UserProfilePage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+
   useEffect(() => {
     if (!userId) return
 
@@ -66,13 +67,13 @@ export default function UserProfilePage() {
         productsSnapshot.forEach((doc) => {
           const data = doc.data()
           
-          // 最初の商品からユーザー情報を取得
+        
           if (products.length === 0) {
             userName = String(data.sellerName || "匿名ユーザー")
             userEmail = String(data.sellerEmail || "")
           }
           
-          // 最も古い出品日を取得
+         
           if (data.createdAt && data.createdAt < earliestDate) {
             earliestDate = data.createdAt
           }
