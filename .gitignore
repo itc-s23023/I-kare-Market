@@ -29,3 +29,5 @@ next-env.d.ts
 #firebase 
 firebaseConfig.js
 
+#GitHub Copilot
+.github
