@@ -8,7 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Send, Check } from "lucide-react"
-import { mockUser } from "@/lib/mock-data"
+import { useAuth } from "@/components/auth-provider"
+import { useChat } from "@/hooks/useChat"
 import { doc, getDoc } from "firebase/firestore"
 import { db } from "@/components/firebaseConfig"
 import Image from "next/image"
@@ -62,63 +63,15 @@ export default function ChatPage({ params }: { params: Promise<{ productId: stri
     content: string
     timestamp: string
   }
-  const [messages, setMessages] = useState<Message[]>([])
-  useEffect(() => {
-    // 商品データ取得後に初期メッセージ（モック）をセット
-    if (product) {
-      setMessages([
-        {
-          id: "1",
-          senderId: product.sellerId,
-          senderName: product.sellerName,
-          content: "こんにちは！商品に興味を持っていただきありがとうございます。",
-          timestamp: "2024-01-15 10:30",
-        },
-        {
-          id: "2",
-          senderId: "user-002",
-          senderName: "佐藤花子",
-          content: "はじめまして。商品の状態を教えてください。",
-          timestamp: "2024-01-15 10:32",
-        },
-        {
-          id: "3",
-          senderId: product.sellerId,
-          senderName: product.sellerName,
-          content: "目立った傷はありません。写真も追加できます。",
-          timestamp: "2024-01-15 10:35",
-        },
-        {
-          id: "4",
-          senderId: "user-002",
-          senderName: "佐藤花子",
-          content: "ありがとうございます！検討します。",
-          timestamp: "2024-01-15 10:36",
-        },
-        {
-          id: "5",
-          senderId: "user-002",
-          senderName: "佐藤花子",
-          content: "翌日になりました。まだ購入可能ですか？",
-          timestamp: "2024-01-16 09:10",
-        },
-        {
-          id: "6",
-          senderId: product.sellerId,
-          senderName: product.sellerName,
-          content: "はい、まだ購入可能です。",
-          timestamp: "2024-01-16 09:12",
-        },
-        {
-          id: "7",
-          senderId: "user-002",
-          senderName: "佐藤花子",
-          content: "ありがとうございます。購入手続きします！",
-          timestamp: "2024-01-16 09:15",
-        },
-      ])
-    }
-  }, [product])
+
+  // auth
+  const { user } = useAuth()
+
+  // useChat: products/{productId}/chat サブコレクションを購読
+  const { messages: chatMessages, loading: chatLoading, error: chatError, sendMessage } = useChat(
+    "products",
+    productId
+  )
   // メッセージを日付ごとにグループ化する関数
   function groupMessagesByDate(messages: Message[]): { [date: string]: Message[] } {
     const groups: { [date: string]: Message[] } = {}
@@ -135,7 +88,7 @@ export default function ChatPage({ params }: { params: Promise<{ productId: stri
   const messagesEndRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages])
+  }, [chatMessages])
   const [newMessage, setNewMessage] = useState("")
   const [transactionStatus, setTransactionStatus] = useState<"negotiating" | "agreed" | "completed">("negotiating")
 
@@ -163,23 +116,23 @@ export default function ChatPage({ params }: { params: Promise<{ productId: stri
 
   const handleSendMessage = () => {
     if (!newMessage.trim()) return
-
-    const message = {
-      id: Date.now().toString(),
-      senderId: mockUser.id,
-      senderName: mockUser.name,
-      content: newMessage,
-      timestamp: new Date().toLocaleString("ja-JP", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
+    if (!user) {
+      // ログインしていない場合は送信を防ぐ（AuthProvider側でログイン導線を出す）
+      return
     }
 
-    setMessages([...messages, message])
-    setNewMessage("")
+    // Firestore に送信
+    sendMessage({
+      senderId: user.uid,
+      senderName: (user.displayName as string) || user.email || "匿名",
+      content: newMessage.trim(),
+    })
+      .then(() => {
+        setNewMessage("")
+      })
+      .catch((e) => {
+        console.error("メッセージ送信エラー", e)
+      })
   }
 
   const handleAgree = () => {
@@ -233,7 +186,26 @@ export default function ChatPage({ params }: { params: Promise<{ productId: stri
             </CardHeader>
             <CardContent>
               <div className="space-y-4 mb-4 max-h-96 overflow-y-auto bg-white">
-                {Object.entries(groupMessagesByDate(messages)).map(([date, msgs]) => (
+                {/* Firestore の messages を表示用に整形 */}
+                {Object.entries(
+                  groupMessagesByDate(
+                    chatMessages.map((m) => ({
+                      id: m.id,
+                      senderId: m.senderId,
+                      senderName: m.senderName,
+                      content: m.content,
+                      timestamp: m.createdAt
+                        ? m.createdAt.toLocaleString("ja-JP", {
+                            year: "numeric",
+                            month: "2-digit",
+                            day: "2-digit",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
+                        : "",
+                    }))
+                  )
+                ).map(([date, msgs]) => (
                   <div key={date}>
                     {/* 日付区切り線（Slack風） */}
                     <div className="flex items-center my-6">
@@ -243,9 +215,8 @@ export default function ChatPage({ params }: { params: Promise<{ productId: stri
                     </div>
                     {/* メッセージ本体 */}
                     {msgs.map((message: Message) => {
-                      // 自分のID（仮）
-                      const myId = "user-002" // ←必要に応じてmockUser.id等に置換
-                      const isCurrentUser = message.senderId === myId
+                      // 自分のIDをFirebase Authから取得
+                      const isCurrentUser = user ? message.senderId === user.uid : false
                       // 時間だけ抽出
                       let time = ""
                       const match = message.timestamp.match(/\d{2}:\d{2}/)
