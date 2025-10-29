@@ -296,30 +296,15 @@ export default function ProductDetailPage() {
                     {!isSold && !isOwner && (
                       <div className="space-y-3">
                         <Separator />
-                        
                         <div className="flex gap-2">
                           <Button 
-                            onClick={handlePurchase}
-                            className="flex-1"
-                            size="lg"
-                          >
-                            <ShoppingCart className="h-5 w-5 mr-2" />
-                            購入する
-                          </Button>
-                          <Button 
                             onClick={handleChat}
-                            variant="outline"
-                            className="flex-1"
+                            className="flex-1 bg-black text-white hover:bg-gray-800"
                             size="lg"
                           >
-                            <MessageCircle className="h-5 w-5 mr-2" />
+                            <MessageCircle className="h-5 w-5 mr-2 text-white" />
                             チャット
                           </Button>
-                        </div>
-
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Shield className="h-3 w-3" />
-                          <span>学内取引で安心・安全</span>
                         </div>
                       </div>
                     )}
