@@ -47,12 +47,11 @@ export function Header() {
         <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
           <div className="relative h-10 w-auto">
             <Image
-              src="/college-logo.png2"
+              src="/college-logo.png"
               alt="フジ学園専門学校 ITカレッジ沖縄"
               width={35}
-              height={9}
+              height={35}
               className="object-contain"
-              priority
             />
           </div>
           <span className="font-bold text-2xl hidden lg:inline-block bg-gradient-to-r from-orange-500 to-orange-600 bg-clip-text text-transparent">

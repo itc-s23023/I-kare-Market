@@ -13,22 +13,22 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
-        url: '/college-logo.png2',
+        url: '/college-logo.png',
         sizes: '32x32',
         type: 'image/png',
       },
       {
-        url: '/college-logo.png2',
+        url: '/college-logo.png',
         sizes: '16x16',
         type: 'image/png',
       }
     ],
     apple: {
-      url: '/college-logo.png2',
+      url: '/college-logo.png',
       sizes: '180x180',
       type: 'image/png',
     },
-    shortcut: '/college-logo.png2',
+    shortcut: '/college-logo.png',
   },
   manifest: '/manifest.json',
   themeColor: '#ea580c',
@@ -39,7 +39,7 @@ export const metadata: Metadata = {
     siteName: 'アイカレマーケット',
     images: [
       {
-        url: '/college-logo.png2',
+        url: '/college-logo.png',
         width: 1200,
         height: 630,
         alt: 'アイカレマーケット',
@@ -52,7 +52,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'アイカレマーケット',
     description: '学生同士で安心・安全に取引できる学内マーケットプレイス',
-    images: ['/college-logo.png2'],
+    images: ['/college-logo.png'],
   },
 }
 
