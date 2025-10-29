@@ -6,13 +6,37 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Search, Gavel, Plus } from "lucide-react"
-import { useAuctions } from "@/hooks/useAuctions"
-import { useState } from "react"
+import { useAuctions, useAuctionManagement } from "@/hooks/useAuctions"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 
 export default function AuctionsPage() {
   const { auctions, loading, error } = useAuctions()
+  const { closeExpiredAuction } = useAuctionManagement()
   const [searchTerm, setSearchTerm] = useState("")
+  const [filter, setFilter] = useState<'all' | 'active' | 'ended'>('all')
+
+  // 期間切れオークションの自動終了チェック
+  useEffect(() => {
+    if (!auctions.length) return
+
+    const checkExpiredAuctions = async () => {
+      const now = new Date()
+      
+      for (const auction of auctions) {
+        if (auction.status === 'active' && new Date(auction.endTime) <= now) {
+          try {
+            console.log(`期間切れオークションを終了: ${auction.id}`)
+            await closeExpiredAuction(auction.id)
+          } catch (error) {
+            console.error(`オークション${auction.id}の終了処理でエラー:`, error)
+          }
+        }
+      }
+    }
+
+    checkExpiredAuctions()
+  }, [auctions, closeExpiredAuction])
 
   // 検索フィルター
   const filteredAuctions = auctions.filter(auction =>

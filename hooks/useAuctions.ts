@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { collection, addDoc, getDocs, doc, getDoc } from "firebase/firestore"
+import { collection, addDoc, getDocs, doc, getDoc, updateDoc, query, where, orderBy, deleteDoc, writeBatch, serverTimestamp } from "firebase/firestore"
 import { db } from "@/components/firebaseConfig"
 import { useAuth } from "@/components/auth-provider"
 
@@ -23,10 +23,50 @@ export interface Auction {
   createdAt: string
 }
 
+export interface BiddingHistory {
+  id: string
+  auction_productid: string
+  userid: string
+  username: string
+  bid_amount: number
+  bid_time: string
+}
+
 export function useAuctions() {
   const [auctions, setAuctions] = useState<Auction[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+
+  // 入札履歴を取得する関数
+  const getBiddingHistory = async (auctionId: string): Promise<BiddingHistory[]> => {
+    try {
+      const q = query(
+        collection(db, "bidding_history"),
+        where("auction_productid", "==", auctionId),
+        orderBy("bid_amount", "desc")
+      )
+      const querySnapshot = await getDocs(q)
+      const bids: BiddingHistory[] = []
+      
+      querySnapshot.forEach((doc) => {
+        const data = doc.data()
+        bids.push({
+          id: doc.id,
+          auction_productid: data.auction_productid,
+          userid: data.userid,
+          username: data.username,
+          bid_amount: Number(data.bid_amount),
+          bid_time: data.bid_time
+        })
+      })
+      
+      return bids
+    } catch (error) {
+      console.error("入札履歴取得エラー:", error)
+      return []
+    }
+  }
 
   useEffect(() => {
     const fetchAuctions = async () => {
@@ -75,6 +115,84 @@ export function useAuctions() {
 
     fetchAuctions()
   }, [])
+
+  // オークション終了チェックと通知送信
+  const checkAndEndExpiredAuctions = async () => {
+    const now = new Date()
+    
+    for (const auction of auctions) {
+      const endTime = new Date(auction.endTime)
+      
+      // 期間切れかつまだ終了処理されていないオークションをチェック
+      if (now >= endTime && auction.status === 'active') {
+        try {
+          // 入札履歴を取得
+          const bids = await getBiddingHistory(auction.id)
+          
+          if (bids.length > 0) {
+            // 最高入札者を取得（既にソート済み）
+            const highestBid = bids[0]
+            
+            // オークション状態をFirestoreで終了に更新
+            const auctionRef = doc(db, "auctions", auction.id)
+            await updateDoc(auctionRef, {
+              status: "ended",
+              winnerId: highestBid.userid,
+              winnerName: highestBid.username,
+              finalPrice: highestBid.bid_amount
+            })
+            
+            // ローカル状態も更新
+            setAuctions(prev => prev.map(a => 
+              a.id === auction.id ? { ...a, status: 'ended' as const } : a
+            ))
+            
+            // チャットを自動開始（初回メッセージを送信）
+            try {
+              const chatRef = collection(db, "auctions", auction.id, "chat")
+              await addDoc(chatRef, {
+                senderId: "system",
+                senderName: "システム",
+                content: `オークションが終了しました。落札者: ${highestBid.username} (¥${highestBid.bid_amount.toLocaleString()})\n取引を開始してください。`,
+                createdAt: serverTimestamp()
+              })
+              console.log(`チャット開始: オークション ${auction.id}`)
+            } catch (chatError) {
+              console.error("チャット開始エラー:", chatError)
+            }
+            
+            
+            console.log(`オークション ${auction.id} が終了しました。落札者: ${highestBid.username}`)
+          } else {
+            // 入札がない場合は単純に終了
+            const auctionRef = doc(db, "auctions", auction.id)
+            await updateDoc(auctionRef, {
+              status: "ended"
+            })
+            
+            setAuctions(prev => prev.map(a => 
+              a.id === auction.id ? { ...a, status: 'ended' as const } : a
+            ))
+            
+          }
+        } catch (error) {
+          console.error(`オークション ${auction.id} の終了処理でエラー:`, error)
+        }
+      }
+    }
+  }
+
+  // 定期的にオークション終了をチェック
+  useEffect(() => {
+    if (auctions.length > 0) {
+      checkAndEndExpiredAuctions()
+      
+      // 1分毎にチェック
+      const interval = setInterval(checkAndEndExpiredAuctions, 60000)
+      
+      return () => clearInterval(interval)
+    }
+  }, [auctions])
 
   return { auctions, loading, error }
 }
@@ -205,4 +323,513 @@ export function useAuctionSubmit() {
     isSubmitting,
     user
   }
+}
+
+
+export function useBidding() {
+  const { user } = useAuth()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const placeBid = async (auctionId: string, bidAmount: number) => {
+    if (!user) {
+      throw new Error("ログインが必要です")
+    }
+
+    if (!auctionId || bidAmount <= 0) {
+      throw new Error("入札情報が無効です")
+    }
+
+    setIsSubmitting(true)
+
+    try {
+      console.log("🔄 入札処理開始:", { auctionId, bidAmount, userId: user.uid })
+
+      
+      const auctionRef = doc(db, "auctions", auctionId)
+      const auctionSnap = await getDoc(auctionRef)
+      
+      if (!auctionSnap.exists()) {
+        throw new Error("オークションが見つかりません")
+      }
+
+      const auctionData = auctionSnap.data()
+      const currentBid = Number(auctionData.currentBid) || Number(auctionData.startingPrice) || 0
+      const minimumBid = currentBid + 100
+
+    
+      if (bidAmount < minimumBid) {
+        throw new Error(`入札額は現在価格より100円以上高く設定してください（最低入札額: ¥${minimumBid.toLocaleString()}）`)
+      }
+
+     
+      const endTime = new Date(auctionData.endTime)
+      const now = new Date()
+      if (now >= endTime) {
+        throw new Error("このオークションは既に終了しています")
+      }
+
+    
+      if (user.uid === auctionData.sellerId) {
+        throw new Error("自分が出品したオークションには入札できません")
+      }
+
+    
+      const biddingData = {
+        auction_productid: auctionId,
+        userid: user.uid,
+        username: user.displayName || "匿名ユーザー",
+        bid_amount: Number(bidAmount),
+        bid_time: new Date().toISOString()
+      }
+
+      console.log("💾 入札履歴保存:", biddingData)
+      await addDoc(collection(db, "bidding_history"), biddingData)
+
+    
+      const newBidCount = Number(auctionData.bidCount || 0) + 1
+      const updateData = {
+        currentBid: Number(bidAmount),
+        bidCount: newBidCount,
+
+        highestBidderId: user.uid,
+        highestBidderName: user.displayName || "匿名ユーザー",
+        updatedAt: new Date().toISOString()
+      }
+
+      console.log("📈 オークション情報更新:", updateData)
+      await updateDoc(auctionRef, updateData)
+
+      console.log("✅ 入札完了")
+      return { 
+        success: true, 
+        message: "入札が完了しました！",
+        newCurrentBid: bidAmount,
+        bidCount: newBidCount
+      }
+    } catch (error: any) {
+      console.error("❌ 入札エラー:", error)
+      throw error
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return {
+    placeBid,
+    isSubmitting
+  }
+}
+
+export function useBiddingHistory(auctionId: string) {
+  const [biddingHistory, setBiddingHistory] = useState<BiddingHistory[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!auctionId) {
+      setLoading(false)
+      return
+    }
+
+    const fetchBiddingHistory = async () => {
+      try {
+        console.log("🔄 入札履歴取得開始:", auctionId)
+
+        const simpleQuery = query(
+          collection(db, "bidding_history"),
+          where("auction_productid", "==", auctionId)
+        )
+        
+        console.log("📊 シンプルクエリ実行中...")
+        const querySnapshot = await getDocs(simpleQuery)
+        const historyData: BiddingHistory[] = []
+        
+        console.log(`📄 取得した入札履歴件数: ${querySnapshot.size}`)
+        
+        querySnapshot.forEach((doc) => {
+          const data = doc.data()
+          console.log("📝 入札履歴データ:", doc.id, data)
+          
+          historyData.push({
+            id: doc.id,
+            auction_productid: String(data.auction_productid || ""),
+            userid: String(data.userid || ""),
+            username: String(data.username || "匿名ユーザー"),
+            bid_amount: Number(data.bid_amount) || 0,
+            bid_time: String(data.bid_time || new Date().toISOString())
+          })
+        })
+
+        historyData.sort((a, b) => new Date(b.bid_time).getTime() - new Date(a.bid_time).getTime())
+
+        console.log(`✅ 入札履歴取得完了: ${historyData.length}件`)
+        setBiddingHistory(historyData)
+        setError(null)
+      } catch (error: any) {
+        console.error("❌ 入札履歴取得エラー:", error)
+        console.error("エラー詳細:", error.code, error.message)
+        
+        
+        if (error.code === 'failed-precondition') {
+          setError("データベースのインデックスが不足しています。Firebase Consoleでインデックスを作成してください。")
+        } else if (error.code === 'permission-denied') {
+          setError("入札履歴へのアクセス権限がありません。")
+        } else {
+          setError(`入札履歴の取得に失敗しました: ${error.message}`)
+        }
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchBiddingHistory()
+  }, [auctionId])
+
+  return { biddingHistory, loading, error }
+}
+
+// オークション管理フック
+export function useAuctionManagement() {
+  const { user } = useAuth()
+  const [isProcessing, setIsProcessing] = useState(false)
+
+  // 最高入札者への通知とチャット開始
+  const notifyHighestBidder = async (auctionId: string, auctionData: any) => {
+    try {
+      console.log("🔔 最高入札者への通知開始")
+      
+      if (!auctionData.highestBidderId) {
+        console.log("入札者がいないため通知をスキップ")
+        return
+      }
+
+      // 通知を作成
+      const notificationData = {
+        userId: auctionData.highestBidderId,
+        userName: auctionData.highestBidderName,
+        type: "auction_won",
+        title: "オークション落札",
+        message: `「${auctionData.title}」のオークションで最高入札者となりました。出品者とのチャットが開始されました。`,
+        auctionId: auctionId,
+        sellerId: auctionData.sellerId,
+        sellerName: auctionData.sellerName,
+        finalPrice: auctionData.currentBid,
+        read: false,
+        createdAt: new Date().toISOString()
+      }
+
+      await addDoc(collection(db, "notifications"), notificationData)
+
+      // チャットを開始（初期メッセージを追加）
+      const chatColRef = collection(db, "auctions", auctionId, "chat")
+      await addDoc(chatColRef, {
+        senderId: "system",
+        senderName: "システム",
+        content: `おめでとうございます！${auctionData.highestBidderName}さんが最高入札者となりました。出品者の${auctionData.sellerName}さんとの取引を開始してください。`,
+        createdAt: new Date(),
+      })
+
+      console.log("✅ 最高入札者への通知とチャット開始完了")
+    } catch (error) {
+      console.error("❌ 最高入札者への通知エラー:", error)
+    }
+  }
+
+  // オークション終了処理（期間切れ対応）
+  const closeExpiredAuction = async (auctionId: string) => {
+    setIsProcessing(true)
+
+    try {
+      console.log(`🔄 期間切れオークション終了処理開始: ${auctionId}`)
+
+      const auctionRef = doc(db, "auctions", auctionId)
+      const auctionSnap = await getDoc(auctionRef)
+      
+      if (!auctionSnap.exists()) {
+        throw new Error("オークションが見つかりません")
+      }
+
+      const auctionData = auctionSnap.data()
+      
+      // 既に終了している場合はスキップ
+      if (auctionData.status === "ended") {
+        return { success: true, message: "既に終了済み" }
+      }
+
+      // 最高入札者がいる場合は通知とチャット開始
+      if (auctionData.highestBidderId) {
+        await notifyHighestBidder(auctionId, auctionData)
+      }
+
+      // オークション状態を更新
+      await updateDoc(auctionRef, {
+        status: "ended",
+        endReason: "expired",
+        actualEndTime: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      })
+
+      console.log("✅ 期間切れオークション終了処理完了")
+      return { 
+        success: true, 
+        message: auctionData.highestBidderId 
+          ? "オークションが終了し、最高入札者に通知を送信しました" 
+          : "オークションが終了しました（入札者なし）"
+      }
+    } catch (error: any) {
+      console.error("❌ 期間切れオークション終了処理エラー:", error)
+      throw error
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  // オークション終了処理
+  const closeAuction = async (auctionId: string, reason: 'expired' | 'bought') => {
+    if (!user) {
+      throw new Error("ログインが必要です")
+    }
+
+    setIsProcessing(true)
+
+    try {
+      console.log(`🔄 オークション終了処理開始: ${auctionId} (理由: ${reason})`)
+
+    
+      const auctionRef = doc(db, "auctions", auctionId)
+      const auctionSnap = await getDoc(auctionRef)
+      
+      if (!auctionSnap.exists()) {
+        throw new Error("オークションが見つかりません")
+      }
+
+      const auctionData = auctionSnap.data()
+      
+  
+      if (user.uid !== auctionData.sellerId) {
+        throw new Error("このオークションを終了する権限がありません")
+      }
+
+      
+      const batch = writeBatch(db)
+
+      
+      batch.update(auctionRef, {
+        status: "ended",
+        endReason: reason,
+        actualEndTime: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      })
+
+      // 2. 入札履歴を削除
+      console.log("🗑️ 入札履歴削除開始")
+      const biddingQuery = query(
+        collection(db, "bidding_history"),
+        where("auction_productid", "==", auctionId)
+      )
+      
+      const biddingSnapshot = await getDocs(biddingQuery)
+      console.log(`📄 削除対象の入札履歴: ${biddingSnapshot.size}件`)
+      
+      biddingSnapshot.forEach((doc) => {
+        batch.delete(doc.ref)
+      })
+
+      // 3. バッチ実行
+      await batch.commit()
+
+      console.log("✅ オークション終了処理完了")
+      return { 
+        success: true, 
+        message: reason === 'expired' ? "オークションが終了し、入札履歴を削除しました" : "購入が確定し、入札履歴を削除しました",
+        deletedBids: biddingSnapshot.size
+      }
+    } catch (error: any) {
+      console.error("❌ オークション終了処理エラー:", error)
+      throw error
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  // 即決購入処理
+  const buyNow = async (auctionId: string) => {
+    if (!user) {
+      throw new Error("ログインが必要です")
+    }
+
+    setIsProcessing(true)
+
+    try {
+      console.log(`🔄 即決購入処理開始: ${auctionId}`)
+
+      // オークション情報を取得
+      const auctionRef = doc(db, "auctions", auctionId)
+      const auctionSnap = await getDoc(auctionRef)
+      
+      if (!auctionSnap.exists()) {
+        throw new Error("オークションが見つかりません")
+      }
+
+      const auctionData = auctionSnap.data()
+      
+      // 即決価格が設定されているかチェック
+      if (!auctionData.buyNowPrice) {
+        throw new Error("このオークションには即決価格が設定されていません")
+      }
+
+      // 自分の出品商品への購入を防ぐ
+      if (user.uid === auctionData.sellerId) {
+        throw new Error("自分が出品したオークションは購入できません")
+      }
+
+      // オークション終了時間の確認
+      const endTime = new Date(auctionData.endTime)
+      const now = new Date()
+      if (now >= endTime) {
+        throw new Error("このオークションは既に終了しています")
+      }
+
+      // バッチ処理で一括更新
+      const batch = writeBatch(db)
+
+      // 1. オークション情報を更新
+      batch.update(auctionRef, {
+        status: "ended",
+        endReason: "bought",
+        buyerId: user.uid,
+        buyerName: user.displayName || "匿名ユーザー",
+        finalPrice: auctionData.buyNowPrice,
+        actualEndTime: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      })
+
+      // 2. 購入履歴を追加（今後の取引管理用）
+      const purchaseRef = doc(collection(db, "purchases"))
+      batch.set(purchaseRef, {
+        auctionId: auctionId,
+        productTitle: auctionData.title,
+        sellerId: auctionData.sellerId,
+        sellerName: auctionData.sellerName,
+        buyerId: user.uid,
+        buyerName: user.displayName || "匿名ユーザー",
+        purchasePrice: auctionData.buyNowPrice,
+        purchaseTime: new Date().toISOString(),
+        status: "completed"
+      })
+
+      // 3. 入札履歴を削除
+      console.log("🗑️ 入札履歴削除開始")
+      const biddingQuery = query(
+        collection(db, "bidding_history"),
+        where("auction_productid", "==", auctionId)
+      )
+      
+      const biddingSnapshot = await getDocs(biddingQuery)
+      console.log(`📄 削除対象の入札履歴: ${biddingSnapshot.size}件`)
+      
+      biddingSnapshot.forEach((doc) => {
+        batch.delete(doc.ref)
+      })
+
+      // 4. バッチ実行
+      await batch.commit()
+
+      console.log("✅ 即決購入処理完了")
+      return { 
+        success: true, 
+        message: "購入が完了しました！入札履歴は削除されました。",
+        purchasePrice: auctionData.buyNowPrice,
+        deletedBids: biddingSnapshot.size
+      }
+    } catch (error: any) {
+      console.error("❌ 即決購入処理エラー:", error)
+      throw error
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  return {
+    closeAuction,
+    closeExpiredAuction,
+    buyNow,
+    isProcessing
+  }
+}
+
+// 自動オークション終了チェック機能
+export function useAuctionAutoClose() {
+  useEffect(() => {
+    const checkExpiredAuctions = async () => {
+      try {
+        console.log("🔄 期限切れオークションチェック開始")
+        
+        const now = new Date()
+        const q = query(
+          collection(db, "auctions"),
+          where("status", "==", "active")
+        )
+        
+        const snapshot = await getDocs(q)
+        const expiredAuctions: string[] = []
+        
+        snapshot.forEach((doc) => {
+          const data = doc.data()
+          const endTime = new Date(data.endTime)
+          
+          if (now >= endTime) {
+            expiredAuctions.push(doc.id)
+          }
+        })
+
+        if (expiredAuctions.length > 0) {
+          console.log(`⏰ 期限切れオークション発見: ${expiredAuctions.length}件`)
+          
+          // 各期限切れオークションの入札履歴を削除
+          for (const auctionId of expiredAuctions) {
+            try {
+              // バッチ処理で更新
+              const batch = writeBatch(db)
+              
+              // オークションステータス更新
+              const auctionRef = doc(db, "auctions", auctionId)
+              batch.update(auctionRef, {
+                status: "ended",
+                endReason: "expired",
+                actualEndTime: now.toISOString(),
+                updatedAt: now.toISOString()
+              })
+
+              // 入札履歴削除
+              const biddingQuery = query(
+                collection(db, "bidding_history"),
+                where("auction_productid", "==", auctionId)
+              )
+              
+              const biddingSnapshot = await getDocs(biddingQuery)
+              biddingSnapshot.forEach((doc) => {
+                batch.delete(doc.ref)
+              })
+
+              await batch.commit()
+              console.log(`✅ 期限切れオークション処理完了: ${auctionId}`)
+            } catch (error) {
+              console.error(`❌ 期限切れオークション処理エラー: ${auctionId}`, error)
+            }
+          }
+        }
+      } catch (error) {
+        console.error("❌ 期限切れオークションチェックエラー:", error)
+      }
+    }
+
+    // 初回チェック
+    checkExpiredAuctions()
+
+    // 10分ごとにチェック
+    const interval = setInterval(checkExpiredAuctions, 10 * 60 * 1000)
+
+    return () => clearInterval(interval)
+  }, [])
 }

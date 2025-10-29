@@ -1,16 +1,17 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Header } from "@/components/header"
-import { useAuction } from "@/hooks/useAuctions"
+import { useAuction, useBidding, useBiddingHistory, useAuctionManagement, useAuctionAutoClose } from "@/hooks/useAuctions"
 import { useAuth } from "@/components/auth-provider"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { Clock, TrendingUp, User, Heart, Gavel, AlertCircle } from "lucide-react"
+import { Clock, TrendingUp, User, Heart, Gavel, AlertCircle, History, ShoppingCart, Trash2 } from "lucide-react"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import Image from "next/image"
 
 function getTimeRemaining(endTime: string) {
@@ -35,10 +36,24 @@ export default function AuctionDetailPage() {
   const { user } = useAuth()
   const auctionId = params.id as string
   const { auction, loading, error } = useAuction(auctionId)
-  
+  const { placeBid, isSubmitting } = useBidding()
+  const { biddingHistory, loading: historyLoading, error: historyError } = useBiddingHistory(auctionId)
+  const { closeAuction, buyNow, isProcessing } = useAuctionManagement()
+
+  useAuctionAutoClose()
+
   const [bidAmount, setBidAmount] = useState("")
   const [isLiked, setIsLiked] = useState(false)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const [bidError, setBidError] = useState<string | null>(null)
+  const [bidSuccess, setBidSuccess] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (auction) {
+      const minimumBid = auction.currentBid + 100
+      setBidAmount(minimumBid.toString())
+    }
+  }, [auction?.currentBid])
 
   if (loading) {
     return (
@@ -82,36 +97,73 @@ export default function AuctionDetailPage() {
   const hasNoBids = auction.bidCount === 0
   const isOwner = user?.uid === auction.sellerId
   const minimumBid = auction.currentBid + 100
+  const isAuctionEnded = auction.status === "ended" || timeRemaining.isEnded
 
   const handleLikeClick = () => {
     setIsLiked(!isLiked)
   }
 
-  const handleBid = () => {
+  const handleBid = async () => {
     if (!user) {
       router.push("/login")
       return
     }
+
+    setBidError(null)
+    setBidSuccess(null)
 
     const bid = Number(bidAmount)
     if (bid < minimumBid) {
-      alert(`入札額は現在価格より100円以上高く設定してください（最低入札額: ¥${minimumBid.toLocaleString()}）`)
+      setBidError(`入札額は現在価格より100円以上高く設定してください（最低入札額: ¥${minimumBid.toLocaleString()}）`)
       return
     }
 
-    // 実際の入札機能は今後実装
-    alert("入札機能は準備中です")
+    try {
+      const result = await placeBid(auctionId, bid)
+      setBidSuccess(result.message)
+      setBidAmount("")
+      window.location.reload()
+    } catch (error: any) {
+      setBidError(error.message)
+    }
   }
 
-  const handleBuyNow = () => {
+  const handleBuyNow = async () => {
     if (!user) {
       router.push("/login")
       return
     }
 
-    if (auction.buyNowPrice) {
-      // 即決購入機能は今後実装
-      alert("即決購入機能は準備中です")
+    setBidError(null)
+    setBidSuccess(null)
+
+    try {
+      const result = await buyNow(auctionId)
+      setBidSuccess(result.message)
+
+      setTimeout(() => {
+        router.push("/auctions")
+      }, 2000)
+    } catch (error: any) {
+      setBidError(error.message)
+    }
+  }
+
+  const handleManualClose = async () => {
+    if (!isOwner) return
+
+    setBidError(null)
+    setBidSuccess(null)
+
+    try {
+      const result = await closeAuction(auctionId, "expired")
+      setBidSuccess(result.message)
+
+      setTimeout(() => {
+        window.location.reload()
+      }, 2000)
+    } catch (error: any) {
+      setBidError(error.message)
     }
   }
 
@@ -121,7 +173,6 @@ export default function AuctionDetailPage() {
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* 画像エリア */}
             <div className="space-y-4">
               <div className="aspect-square relative overflow-hidden rounded-lg bg-muted">
                 <Image
@@ -131,7 +182,7 @@ export default function AuctionDetailPage() {
                   className="object-cover"
                   sizes="(max-width: 1024px) 100vw, 50vw"
                 />
-                
+
                 <Button
                   size="icon"
                   variant="secondary"
@@ -141,7 +192,7 @@ export default function AuctionDetailPage() {
                   <Heart className={`h-5 w-5 ${isLiked ? "fill-red-500 text-red-500" : ""}`} />
                 </Button>
 
-                {timeRemaining.isEnded && (
+                {isAuctionEnded && (
                   <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
                     <Badge variant="secondary" className="text-lg">
                       オークション終了
@@ -150,7 +201,6 @@ export default function AuctionDetailPage() {
                 )}
               </div>
 
-              {/* サムネイル画像 */}
               {auction.images.length > 1 && (
                 <div className="flex gap-2 overflow-x-auto">
                   {auction.images.map((image, index) => (
@@ -174,11 +224,10 @@ export default function AuctionDetailPage() {
               )}
             </div>
 
-            {/* 詳細エリア */}
             <div className="space-y-6">
               <div>
                 <h1 className="text-3xl font-bold mb-4">{auction.title}</h1>
-                
+
                 <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
                   <div className="flex items-center gap-1">
                     <User className="h-4 w-4" />
@@ -198,7 +247,6 @@ export default function AuctionDetailPage() {
                 </div>
               </div>
 
-              {/* 価格・入札エリア */}
               <Card>
                 <CardContent className="p-6">
                   <div className="space-y-4">
@@ -220,10 +268,46 @@ export default function AuctionDetailPage() {
                       </div>
                     )}
 
-                    {!timeRemaining.isEnded && !isOwner && (
+                    {bidError && (
+                      <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                        <p className="text-red-600 text-sm">{bidError}</p>
+                      </div>
+                    )}
+
+                    {bidSuccess && (
+                      <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                        <p className="text-green-600 text-sm">{bidSuccess}</p>
+                      </div>
+                    )}
+
+                    {isOwner && !isAuctionEnded && (
                       <div className="space-y-3">
                         <Separator />
-                        
+                        <div className="p-4 bg-muted rounded-lg">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-semibold text-muted-foreground">出品者オプション</p>
+                              <p className="text-xs text-muted-foreground">オークションを手動で終了できます</p>
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={handleManualClose}
+                              disabled={isProcessing}
+                              className="flex items-center gap-2"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              {isProcessing ? "処理中..." : "終了"}
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {!isAuctionEnded && !isOwner && (
+                      <div className="space-y-3">
+                        <Separator />
+
                         <div>
                           <label className="text-sm font-medium mb-2 block">
                             入札額 (最低: ¥{minimumBid.toLocaleString()})
@@ -237,86 +321,164 @@ export default function AuctionDetailPage() {
                               min={minimumBid}
                               className="flex-1"
                             />
-                            <Button 
+                            <Button
                               onClick={handleBid}
                               className="px-6"
-                              disabled={!bidAmount || Number(bidAmount) < minimumBid}
+                              disabled={!bidAmount || Number(bidAmount) < minimumBid || isSubmitting}
                             >
                               <Gavel className="h-4 w-4 mr-2" />
-                              入札
+                              {isSubmitting ? "入札中..." : "入札"}
                             </Button>
                           </div>
                         </div>
 
                         {auction.buyNowPrice && (
-                          <Button 
+                          <Button
                             onClick={handleBuyNow}
                             variant="outline"
                             size="lg"
                             className="w-full"
+                            disabled={isProcessing}
                           >
-                            ¥{auction.buyNowPrice.toLocaleString()} で即決購入
+                            <ShoppingCart className="h-4 w-4 mr-2" />
+                            {isProcessing ? "処理中..." : `¥${auction.buyNowPrice.toLocaleString()} で即決購入`}
                           </Button>
                         )}
                       </div>
                     )}
 
-                    {isOwner && (
-                      <div className="p-4 bg-muted rounded-lg">
-                        <div className="flex items-center gap-2 text-muted-foreground">
+                    {isOwner && auction.status === "active" && (
+                      <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                        <div className="flex items-center gap-2 text-blue-600">
                           <AlertCircle className="h-4 w-4" />
                           <span className="text-sm">これはあなたが出品したオークションです</span>
                         </div>
                       </div>
                     )}
 
-                    {timeRemaining.isEnded && (
+                    {isAuctionEnded && (
                       <div className="p-4 bg-muted rounded-lg text-center">
-                        <p className="font-semibold text-muted-foreground">このオークションは終了しています</p>
+                        <p className="font-semibold text-muted-foreground">
+                          このオークションは終了しています
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          入札履歴は自動的に削除されました
+                        </p>
                       </div>
                     )}
                   </div>
                 </CardContent>
               </Card>
 
-              {/* 商品情報 */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>商品情報</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <h3 className="font-semibold mb-2">商品説明</h3>
-                    <p className="text-muted-foreground whitespace-pre-wrap">{auction.description}</p>
-                  </div>
+              <Tabs defaultValue="info" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="info">商品情報</TabsTrigger>
+                  <TabsTrigger value="history" className="flex items-center gap-2" disabled={isAuctionEnded}>
+                    <History className="h-4 w-4" />
+                    入札履歴 ({isAuctionEnded ? 0 : auction.bidCount})
+                  </TabsTrigger>
+                </TabsList>
 
-                  <Separator />
-
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    {auction.category && (
+                <TabsContent value="info">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>商品情報</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
                       <div>
-                        <span className="font-medium">カテゴリー:</span>
-                        <Badge variant="secondary" className="ml-2">
-                          {auction.category}
-                        </Badge>
+                        <h3 className="font-semibold mb-2">商品説明</h3>
+                        <p className="text-muted-foreground whitespace-pre-wrap">{auction.description}</p>
                       </div>
-                    )}
-                    {auction.condition && (
-                      <div>
-                        <span className="font-medium">商品の状態:</span>
-                        <Badge variant="outline" className="ml-2">
-                          {auction.condition}
-                        </Badge>
-                      </div>
-                    )}
-                  </div>
 
-                  <div className="text-xs text-muted-foreground">
-                    <p>オークション開始: {new Date(auction.createdAt).toLocaleString("ja-JP")}</p>
-                    <p>オークション終了: {new Date(auction.endTime).toLocaleString("ja-JP")}</p>
-                  </div>
-                </CardContent>
-              </Card>
+                      <Separator />
+
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        {auction.category && (
+                          <div>
+                            <span className="font-medium">カテゴリー:</span>
+                            <Badge variant="secondary" className="ml-2">
+                              {auction.category}
+                            </Badge>
+                          </div>
+                        )}
+                        {auction.condition && (
+                          <div>
+                            <span className="font-medium">商品の状態:</span>
+                            <Badge variant="outline" className="ml-2">
+                              {auction.condition}
+                            </Badge>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="text-xs text-muted-foreground">
+                        <p>オークション開始: {new Date(auction.createdAt).toLocaleString("ja-JP")}</p>
+                        <p>オークション終了: {new Date(auction.endTime).toLocaleString("ja-JP")}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                <TabsContent value="history">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <History className="h-5 w-5" />
+                        入札履歴
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {isAuctionEnded ? (
+                        <div className="text-center py-8">
+                          <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                            <p className="text-yellow-700 font-medium">オークション終了</p>
+                            <p className="text-yellow-600 text-sm mt-1">
+                              入札履歴は自動的に削除されました
+                            </p>
+                          </div>
+                        </div>
+                      ) : historyLoading ? (
+                        <div className="text-center py-8">
+                          <p className="text-muted-foreground">入札履歴を読み込み中...</p>
+                        </div>
+                      ) : historyError ? (
+                        <div className="text-center py-8">
+                          <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                            <p className="text-red-600 text-sm">{historyError}</p>
+                          </div>
+                        </div>
+                      ) : biddingHistory.length === 0 ? (
+                        <div className="text-center py-8">
+                          <p className="text-muted-foreground">まだ入札がありません</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {biddingHistory.map((bid, index) => (
+                            <div key={bid.id} className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                              <div className="flex items-center gap-3">
+                                <Badge variant={index === 0 ? "default" : "secondary"} className="min-w-fit">
+                                  {index === 0 ? "最高額" : `${index + 1}位`}
+                                </Badge>
+                                <div>
+                                  <p className="font-medium">{bid.username}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {new Date(bid.bid_time).toLocaleString("ja-JP")}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-lg font-bold text-primary">
+                                  ¥{bid.bid_amount.toLocaleString()}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              </Tabs>
             </div>
           </div>
         </div>
