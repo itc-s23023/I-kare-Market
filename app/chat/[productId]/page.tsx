@@ -8,7 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Send, Check } from "lucide-react"
-import { mockProducts, mockUser, mockAuctions } from "@/lib/mock-data"
+import { mockUser } from "@/lib/mock-data"
+import { doc, getDoc } from "firebase/firestore"
+import { db } from "@/components/firebaseConfig"
 import Image from "next/image"
 import { notFound } from "next/navigation"
 
@@ -17,26 +19,42 @@ import { notFound } from "next/navigation"
 
 export default function ChatPage({ params }: { params: Promise<{ productId: string }> }) {
   const { productId } = use(params)
-  let product = mockProducts.find((p) => p.id === productId)
-  // auctionIdでアクセスされた場合はmockAuctionsから取得
-  if (!product) {
-    const auction = mockAuctions.find((a) => a.id === productId)
-    if (auction) {
-      product = {
-        id: auction.id,
-        title: auction.title,
-        price: auction.currentBid,
-        description: auction.description,
-        condition: auction.condition,
-        images: auction.images,
-        sellerId: auction.sellerId,
-        sellerName: auction.sellerName,
-        sellerRating: auction.sellerRating,
-        createdAt: auction.createdAt,
-        status: auction.status === "ended" ? "sold" : "available",
+  const [product, setProduct] = useState<any | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!productId) return
+    const fetchProduct = async () => {
+      try {
+        const docRef = doc(db, "products", productId)
+        const docSnap = await getDoc(docRef)
+        if (docSnap.exists()) {
+          const data = docSnap.data()
+          setProduct({
+            id: docSnap.id,
+            title: data.productname || "商品名なし",
+            price: data.price || 0,
+            description: data.content || "",
+            condition: data.condition || "",
+            images: Array.isArray(data.image_urls) ? data.image_urls : [data.image_url || "/placeholder.jpg"],
+            sellerId: data.userid || "",
+            sellerName: data.sellerName || "匿名ユーザー",
+            sellerRating: data.sellerRating || 0,
+            createdAt: data.createdAt || "",
+            status: data.status || "active",
+          })
+        } else {
+          setError("商品が見つかりません")
+        }
+      } catch (e: any) {
+        setError("商品データ取得エラー: " + e.message)
+      } finally {
+        setLoading(false)
       }
     }
-  }
+    fetchProduct()
+  }, [productId])
   type Message = {
     id: string
     senderId: string
@@ -44,57 +62,63 @@ export default function ChatPage({ params }: { params: Promise<{ productId: stri
     content: string
     timestamp: string
   }
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
-      senderId: product?.sellerId || "seller-001",
-      senderName: product?.sellerName || "山田太郎",
-      content: "こんにちは！商品に興味を持っていただきありがとうございます。",
-      timestamp: "2024-01-15 10:30",
-    },
-    {
-      id: "2",
-      senderId: "user-002",
-      senderName: "佐藤花子",
-      content: "はじめまして。商品の状態を教えてください。",
-      timestamp: "2024-01-15 10:32",
-    },
-    {
-      id: "3",
-      senderId: product?.sellerId || "seller-001",
-      senderName: product?.sellerName || "山田太郎",
-      content: "目立った傷はありません。写真も追加できます。",
-      timestamp: "2024-01-15 10:35",
-    },
-    {
-      id: "4",
-      senderId: "user-002",
-      senderName: "佐藤花子",
-      content: "ありがとうございます！検討します。",
-      timestamp: "2024-01-15 10:36",
-    },
-    {
-      id: "5",
-      senderId: "user-002",
-      senderName: "佐藤花子",
-      content: "翌日になりました。まだ購入可能ですか？",
-      timestamp: "2024-01-16 09:10",
-    },
-    {
-      id: "6",
-      senderId: product?.sellerId || "seller-001",
-      senderName: product?.sellerName || "山田太郎",
-      content: "はい、まだ購入可能です。",
-      timestamp: "2024-01-16 09:12",
-    },
-    {
-      id: "7",
-      senderId: "user-002",
-      senderName: "佐藤花子",
-      content: "ありがとうございます。購入手続きします！",
-      timestamp: "2024-01-16 09:15",
-    },
-  ])
+  const [messages, setMessages] = useState<Message[]>([])
+  useEffect(() => {
+    // 商品データ取得後に初期メッセージ（モック）をセット
+    if (product) {
+      setMessages([
+        {
+          id: "1",
+          senderId: product.sellerId,
+          senderName: product.sellerName,
+          content: "こんにちは！商品に興味を持っていただきありがとうございます。",
+          timestamp: "2024-01-15 10:30",
+        },
+        {
+          id: "2",
+          senderId: "user-002",
+          senderName: "佐藤花子",
+          content: "はじめまして。商品の状態を教えてください。",
+          timestamp: "2024-01-15 10:32",
+        },
+        {
+          id: "3",
+          senderId: product.sellerId,
+          senderName: product.sellerName,
+          content: "目立った傷はありません。写真も追加できます。",
+          timestamp: "2024-01-15 10:35",
+        },
+        {
+          id: "4",
+          senderId: "user-002",
+          senderName: "佐藤花子",
+          content: "ありがとうございます！検討します。",
+          timestamp: "2024-01-15 10:36",
+        },
+        {
+          id: "5",
+          senderId: "user-002",
+          senderName: "佐藤花子",
+          content: "翌日になりました。まだ購入可能ですか？",
+          timestamp: "2024-01-16 09:10",
+        },
+        {
+          id: "6",
+          senderId: product.sellerId,
+          senderName: product.sellerName,
+          content: "はい、まだ購入可能です。",
+          timestamp: "2024-01-16 09:12",
+        },
+        {
+          id: "7",
+          senderId: "user-002",
+          senderName: "佐藤花子",
+          content: "ありがとうございます。購入手続きします！",
+          timestamp: "2024-01-16 09:15",
+        },
+      ])
+    }
+  }, [product])
   // メッセージを日付ごとにグループ化する関数
   function groupMessagesByDate(messages: Message[]): { [date: string]: Message[] } {
     const groups: { [date: string]: Message[] } = {}
@@ -115,7 +139,25 @@ export default function ChatPage({ params }: { params: Promise<{ productId: stri
   const [newMessage, setNewMessage] = useState("")
   const [transactionStatus, setTransactionStatus] = useState<"negotiating" | "agreed" | "completed">("negotiating")
 
-  if (!product) {
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="container mx-auto px-4 py-8">
+          <div className="text-center py-16">
+            <div className="inline-flex items-center px-4 py-2 font-semibold leading-6 text-sm shadow rounded-md text-white bg-blue-500">
+              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              商品データを読み込み中...
+            </div>
+          </div>
+        </main>
+      </div>
+    )
+  }
+  if (error || !product) {
     notFound()
   }
 
