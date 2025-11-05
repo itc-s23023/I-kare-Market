@@ -14,6 +14,10 @@ import Link from "next/link"
 import { useProducts } from "@/hooks/useProducts"
 import { usePurchaseHistory } from "@/hooks/usePurchase_history"
 import { useAuth } from "@/components/auth-provider"
+import { ProtectedRoute } from "@/components/protected-route"
+
+// 動的レンダリングを強制
+export const dynamic = 'force-dynamic'
 
 export default function ProfilePage() {
   const { user } = useAuth()
@@ -43,8 +47,9 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
+    <ProtectedRoute>
+      <div className="min-h-screen bg-background">
+        <Header />
 
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
@@ -321,6 +326,7 @@ export default function ProfilePage() {
           </Tabs>
         </div>
       </main>
-    </div>
+      </div>
+    </ProtectedRoute>
   )
 }
