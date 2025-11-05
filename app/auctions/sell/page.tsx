@@ -13,6 +13,10 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage"
 import { storage } from "@/lib/firebaseConfig"
+import { ProtectedRoute } from "@/components/protected-route"
+
+// 動的レンダリングを強制
+export const dynamic = 'force-dynamic'
 
 export default function AuctionSellPage() {
   const router = useRouter()
@@ -136,38 +140,21 @@ export default function AuctionSellPage() {
     }
   }
 
-  if (!user) {
-    return (
+  return (
+    <ProtectedRoute>
       <div className="min-h-screen bg-background">
         <Header />
-        <main className="container mx-auto px-4 py-8">
-          <div className="max-w-2xl mx-auto">
-            <Card>
-              <CardContent className="p-6 text-center">
-                <p className="mb-4">オークションを出品するにはログインが必要です</p>
-                <Button asChild>
-                  <a href="/login">ログインページへ</a>
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-        </main>
-      </div>
-    )
-  }
-
-  return (
-    <div className="min-h-screen bg-background">
-      <Header />
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-2xl mx-auto">
           <h1 className="text-3xl font-bold mb-2">オークション出品</h1>
           <p className="text-muted-foreground mb-8">
             商品をオークション形式で出品しましょう
           </p>
-          <p className="text-sm text-muted-foreground mb-6">
-            出品者: {user.displayName} (ID: {user.uid})
-          </p>
+          {user && (
+            <p className="text-sm text-muted-foreground mb-6">
+              出品者: {user.displayName} (ID: {user.uid})
+            </p>
+          )}
 
           {error && (
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
@@ -342,6 +329,7 @@ export default function AuctionSellPage() {
           </div>
         </div>
       </main>
-    </div>
+      </div>
+    </ProtectedRoute>
   )
 }
