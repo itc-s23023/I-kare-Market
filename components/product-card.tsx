@@ -1,12 +1,12 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
 import Image from "next/image"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Heart } from "lucide-react"
+import { useLikes } from "@/hooks/uselike"
 
 import type { Product } from "@/hooks/useProducts"
 
@@ -23,11 +23,13 @@ const conditionLabels = {
 } as const
 
 export function ProductCard({ product, showActions = false }: ProductCardProps) {
-  const [isLiked, setIsLiked] = useState(false)
+  const { isLiked, toggleLike } = useLikes()
 
   const handleLikeClick = (e: React.MouseEvent) => {
     e.preventDefault()
-    setIsLiked(!isLiked)
+    if (product.id) {
+      toggleLike(product.id)
+    }
   }
 
   const formatPrice = (price: number) => {
@@ -70,7 +72,7 @@ export function ProductCard({ product, showActions = false }: ProductCardProps) 
           className="absolute top-3 right-3 h-9 w-9 rounded-full shadow-md"
           onClick={handleLikeClick}
         >
-          <Heart className={`h-5 w-5 ${isLiked ? "fill-red-500 text-red-500" : ""}`} />
+          <Heart className={`h-5 w-5 ${product.id && isLiked(product.id) ? "fill-red-500 text-red-500" : ""}`} />
         </Button>
 
         {/* 交渉可能バッジ */}
