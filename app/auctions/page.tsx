@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Search, Gavel, Plus } from "lucide-react"
 import { useAuctions, useAuctionManagement } from "@/hooks/useAuctions"
+import { TopSellers } from "@/components/top-sellers"
 import { useState, useEffect } from "react"
 import Link from "next/link"
 
@@ -202,6 +203,10 @@ export default function AuctionsPage() {
               </TabsContent>
             </Tabs>
           )}
+        </div>
+        {/* 売上ランキング */}
+        <div className="mt-12">
+          <TopSellers />
         </div>
       </main>
     </div>
