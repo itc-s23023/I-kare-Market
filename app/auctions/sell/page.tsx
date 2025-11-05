@@ -15,6 +15,9 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage"
 import { storage } from "@/lib/firebaseConfig"
 import { ProtectedRoute } from "@/components/protected-route"
 
+// 動的レンダリングを強制
+export const dynamic = 'force-dynamic'
+
 export default function AuctionSellPage() {
   const router = useRouter()
   const { submitAuction, isSubmitting, user } = useAuctionSubmit()
@@ -147,9 +150,11 @@ export default function AuctionSellPage() {
           <p className="text-muted-foreground mb-8">
             商品をオークション形式で出品しましょう
           </p>
-          <p className="text-sm text-muted-foreground mb-6">
-            出品者: {user!.displayName} (ID: {user!.uid})
-          </p>
+          {user && (
+            <p className="text-sm text-muted-foreground mb-6">
+              出品者: {user.displayName} (ID: {user.uid})
+            </p>
+          )}
 
           {error && (
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">

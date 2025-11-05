@@ -10,6 +10,9 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { ProtectedRoute } from "@/components/protected-route"
 
+// 動的レンダリングを強制
+export const dynamic = 'force-dynamic'
+
 export default function SellPage() {
   const router = useRouter()
   const { submitProduct, isSubmitting, user } = useProductUpload()
@@ -62,9 +65,11 @@ export default function SellPage() {
           <p className="text-muted-foreground mb-8">
             不要になった教科書や物品を出品しましょう
           </p>
-          <p className="text-sm text-muted-foreground mb-6">
-            出品者: {user!.displayName} (ID: {user!.uid})
-          </p>
+          {user && (
+            <p className="text-sm text-muted-foreground mb-6">
+              出品者: {user.displayName} (ID: {user.uid})
+            </p>
+          )}
 
           {error && (
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">

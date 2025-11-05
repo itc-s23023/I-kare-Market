@@ -16,6 +16,9 @@ import { usePurchaseHistory } from "@/hooks/usePurchase_history"
 import { useAuth } from "@/components/auth-provider"
 import { ProtectedRoute } from "@/components/protected-route"
 
+// 動的レンダリングを強制
+export const dynamic = 'force-dynamic'
+
 export default function ProfilePage() {
   const { user } = useAuth()
   // fetch user-specific data; hooks should handle empty userId gracefully

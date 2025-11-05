@@ -16,6 +16,8 @@ import Image from "next/image"
 import { notFound } from "next/navigation"
 import { ProtectedRoute } from "@/components/protected-route"
 
+// 動的レンダリングを強制
+export const dynamic = 'force-dynamic'
 
 
 

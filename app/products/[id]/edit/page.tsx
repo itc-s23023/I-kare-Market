@@ -14,6 +14,9 @@ import { mockProducts } from "@/lib/mock-data"
 import { notFound } from "next/navigation"
 import { ProtectedRoute } from "@/components/protected-route"
 
+// 動的レンダリングを強制
+export const dynamic = 'force-dynamic'
+
 export default function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const product = mockProducts.find((p) => p.id === id)
