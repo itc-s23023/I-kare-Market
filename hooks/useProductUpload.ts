@@ -142,17 +142,18 @@ export function useProductUpload() {
       console.log("Firestoreに商品データ保存開始")
       // Firestoreに商品データを保存
       const docData = {
-        productname: productData.productname,
-        image_url: imageUrls[0] || "/placeholder.jpg",
-        image_urls: imageUrls,
-        price: Number(productData.price),
-        userid: user.uid,
-        content: productData.content,
-        is_trading: productData.is_trading,
-        createdAt: new Date().toISOString(),
-        status: "active",
-        sellerName: user.displayName || "匿名ユーザー",
-        sellerEmail: user.email
+  productname: productData.productname,
+  image_url: imageUrls[0] || "/placeholder.jpg",
+  image_urls: imageUrls,
+  price: Number(productData.price),
+  userid: user.uid,
+  content: productData.content,
+  is_trading: productData.is_trading,
+  createdAt: new Date().toISOString(),
+  status: "active",
+  sellerName: user.displayName || "匿名ユーザー",
+  sellerEmail: user.email,
+  sellerImage: user.photoURL || "/placeholder-user.jpg"
       }
       
       console.log("保存するデータ:", docData)
