@@ -41,10 +41,10 @@ export function useAuctions() {
   // 入札履歴を取得する関数
   const getBiddingHistory = async (auctionId: string): Promise<BiddingHistory[]> => {
     try {
+      // orderByを削除してインデックス不要にする
       const q = query(
         collection(db, "bidding_history"),
-        where("auction_productid", "==", auctionId),
-        orderBy("bid_amount", "desc")
+        where("auction_productid", "==", auctionId)
       )
       const querySnapshot = await getDocs(q)
       const bids: BiddingHistory[] = []
@@ -60,6 +60,9 @@ export function useAuctions() {
           bid_time: data.bid_time
         })
       })
+      
+      // クライアント側で入札額の降順でソート
+      bids.sort((a, b) => b.bid_amount - a.bid_amount)
       
       return bids
     } catch (error) {
@@ -130,22 +133,41 @@ export function useAuctions() {
           const bids = await getBiddingHistory(auction.id)
           
           if (bids.length > 0) {
-            // 最高入札者を取得（既にソート済み）
+            // 入札がある場合：ステータスのみ更新（データは残す）
             const highestBid = bids[0]
             
             // オークション状態をFirestoreで終了に更新
             const auctionRef = doc(db, "auctions", auction.id)
             await updateDoc(auctionRef, {
               status: "ended",
+              endReason: "expired",
               winnerId: highestBid.userid,
               winnerName: highestBid.username,
-              finalPrice: highestBid.bid_amount
+              finalPrice: highestBid.bid_amount,
+              actualEndTime: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
             })
             
             // ローカル状態も更新
             setAuctions(prev => prev.map(a => 
               a.id === auction.id ? { ...a, status: 'ended' as const } : a
             ))
+            
+            // 取引履歴を保存
+            const transactionData = {
+              auctionId: auction.id,
+              auctionTitle: auction.title,
+              sellerId: auction.sellerId,
+              sellerName: auction.sellerName,
+              winnerId: highestBid.userid,
+              winnerName: highestBid.username,
+              finalPrice: highestBid.bid_amount,
+              endTime: auction.endTime,
+              completedAt: new Date().toISOString(),
+              type: "auction_completed"
+            }
+            
+            await addDoc(collection(db, "transactions"), transactionData)
             
             // チャットを自動開始（初回メッセージを送信）
             try {
@@ -161,22 +183,21 @@ export function useAuctions() {
               console.error("チャット開始エラー:", chatError)
             }
             
-            
-            console.log(`オークション ${auction.id} が終了しました。落札者: ${highestBid.username}`)
+            console.log(`✅ オークション ${auction.id} が終了しました（データ保持）。落札者: ${highestBid.username}`)
           } else {
-            // 入札がない場合は単純に終了
+            // 入札がない場合：完全にデータを削除
+            console.log(`入札がないオークション ${auction.id} を完全削除します`)
+            
             const auctionRef = doc(db, "auctions", auction.id)
-            await updateDoc(auctionRef, {
-              status: "ended"
-            })
+            await deleteDoc(auctionRef)
             
-            setAuctions(prev => prev.map(a => 
-              a.id === auction.id ? { ...a, status: 'ended' as const } : a
-            ))
+            // ローカル状態からも削除
+            setAuctions(prev => prev.filter(a => a.id !== auction.id))
             
+            console.log(`🗑️ 入札なしオークション ${auction.id} のデータを完全に削除しました`)
           }
         } catch (error) {
-          console.error(`オークション ${auction.id} の終了処理でエラー:`, error)
+          console.error(`オークション ${auction.id} の処理でエラー:`, error)
         }
       }
     }
@@ -772,50 +793,77 @@ export function useAuctionAutoClose() {
         )
         
         const snapshot = await getDocs(q)
-        const expiredAuctions: string[] = []
+        const expiredAuctions: { id: string, data: any }[] = []
         
         snapshot.forEach((doc) => {
           const data = doc.data()
           const endTime = new Date(data.endTime)
           
           if (now >= endTime) {
-            expiredAuctions.push(doc.id)
+            expiredAuctions.push({ id: doc.id, data })
           }
         })
 
         if (expiredAuctions.length > 0) {
           console.log(`⏰ 期限切れオークション発見: ${expiredAuctions.length}件`)
           
-          // 各期限切れオークションの入札履歴を削除
-          for (const auctionId of expiredAuctions) {
+          // 各期限切れオークションを処理
+          for (const auction of expiredAuctions) {
             try {
-              // バッチ処理で更新
-              const batch = writeBatch(db)
-              
-              // オークションステータス更新
-              const auctionRef = doc(db, "auctions", auctionId)
-              batch.update(auctionRef, {
-                status: "ended",
-                endReason: "expired",
-                actualEndTime: now.toISOString(),
-                updatedAt: now.toISOString()
-              })
-
-              // 入札履歴削除
+              // 入札履歴を確認
               const biddingQuery = query(
                 collection(db, "bidding_history"),
-                where("auction_productid", "==", auctionId)
+                where("auction_productid", "==", auction.id)
               )
-              
               const biddingSnapshot = await getDocs(biddingQuery)
-              biddingSnapshot.forEach((doc) => {
-                batch.delete(doc.ref)
-              })
-
-              await batch.commit()
-              console.log(`✅ 期限切れオークション処理完了: ${auctionId}`)
+              
+              if (biddingSnapshot.size > 0) {
+                // 入札がある場合：ステータスのみ更新（データは残す）
+                const bids: any[] = []
+                biddingSnapshot.forEach((doc) => {
+                  bids.push({ id: doc.id, ...doc.data() })
+                })
+                
+                // 最高入札額でソート
+                bids.sort((a, b) => b.bid_amount - a.bid_amount)
+                const highestBid = bids[0]
+                
+                // オークションステータス更新
+                const auctionRef = doc(db, "auctions", auction.id)
+                await updateDoc(auctionRef, {
+                  status: "ended",
+                  endReason: "expired",
+                  winnerId: highestBid.userid,
+                  winnerName: highestBid.username,
+                  finalPrice: highestBid.bid_amount,
+                  actualEndTime: now.toISOString(),
+                  updatedAt: now.toISOString()
+                })
+                
+                // 取引履歴を保存
+                const transactionData = {
+                  auctionId: auction.id,
+                  auctionTitle: auction.data.title,
+                  sellerId: auction.data.sellerId,
+                  sellerName: auction.data.sellerName,
+                  winnerId: highestBid.userid,
+                  winnerName: highestBid.username,
+                  finalPrice: highestBid.bid_amount,
+                  endTime: auction.data.endTime,
+                  completedAt: now.toISOString(),
+                  type: "auction_completed"
+                }
+                
+                await addDoc(collection(db, "transactions"), transactionData)
+                console.log(`✅ 期限切れオークション終了処理完了（データ保持）: ${auction.id}`)
+              } else {
+                // 入札がない場合：完全にデータを削除
+                const auctionRef = doc(db, "auctions", auction.id)
+                await deleteDoc(auctionRef)
+                console.log(`🗑️ 入札なしオークション完全削除: ${auction.id}`)
+              }
             } catch (error) {
-              console.error(`❌ 期限切れオークション処理エラー: ${auctionId}`, error)
+              console.error(`❌ 期限切れオークション処理エラー: ${auction.id}`, error)
             }
           }
         }
