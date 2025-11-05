@@ -44,6 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           avatar: user.photoURL || "",
           evalution:[],
           Sales:0,
+          transactions: 0,
           likeproductId: []
         })
         

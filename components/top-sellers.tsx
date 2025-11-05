@@ -64,16 +64,13 @@ export function TopSellers() {
 
         const sellers: SellerRanking[] = querySnapshot.docs.map((doc) => {
           const data = doc.data()
-          
-          // 販売個数は仮データ（1〜50のランダム値）
-          const transactions = Math.floor(Math.random() * 50) + 1
 
           return {
             userId: doc.id,
             name: data.username || "匿名ユーザー",
             avatar: data.avatar || "",
             rating: data.evalution || 0,
-            transactions: transactions,
+            transactions: data.transactions || 0,
             totalSales: data.Sales || 0,
           }
         })
