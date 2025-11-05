@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { collection, getDocs, query, where } from "firebase/firestore"
-import { db } from "@/components/firebaseConfig"
+import { db } from "@/lib/firebaseConfig"
 
 export interface PurchaseHistory {
   id: string
