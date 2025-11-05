@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useAuth } from "@/components/auth-provider"
 import { collection, addDoc } from "firebase/firestore"
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage"
-import { db, storage } from "@/components/firebaseConfig"
+import { db, storage } from "@/lib/firebaseConfig"
 import { v4 as uuidv4 } from "uuid"
 
 export function useProductUpload() {
