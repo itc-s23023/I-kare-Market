@@ -14,6 +14,7 @@ import { doc, getDoc, setDoc } from "firebase/firestore"
 import { db } from "@/lib/firebaseConfig"
 import Image from "next/image"
 import { notFound } from "next/navigation"
+import { ProtectedRoute } from "@/components/protected-route"
 
 
 
@@ -178,10 +179,11 @@ export default function ChatPage({ params }: { params: Promise<{ productId: stri
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
+    <ProtectedRoute>
+      <div className="min-h-screen bg-background">
+        <Header />
 
-      <main className="container mx-auto px-4 py-8">
+        <main className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
           <Card className="mb-6">
             <CardContent className="p-4">
@@ -380,6 +382,7 @@ export default function ChatPage({ params }: { params: Promise<{ productId: stri
           )}
         </div>
       </main>
-    </div>
+      </div>
+    </ProtectedRoute>
   )
 }

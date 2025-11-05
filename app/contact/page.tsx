@@ -4,6 +4,7 @@
 import { Header } from '@/components/header';
 import React, { useState } from 'react';
 import { useAuth } from '@/components/auth-provider';
+import { ProtectedRoute } from '@/components/protected-route';
 
 export default function ContactPage() {
   const [subject, setSubject] = useState('');
@@ -47,7 +48,7 @@ export default function ContactPage() {
   };
 
   return (
-    <>
+    <ProtectedRoute>
       <Header />
       <div className="max-w-md mx-auto mt-8 p-4 border rounded shadow bg-white">
         <h1 className="text-lg font-bold mb-4">お問い合わせ</h1>
@@ -80,6 +81,6 @@ export default function ContactPage() {
           )}
         </form>
       </div>
-    </>
+    </ProtectedRoute>
   );
 }

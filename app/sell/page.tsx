@@ -8,6 +8,7 @@ import { ProductForm } from "@/components/product-form"
 import { useProductUpload } from "@/hooks/useProductUpload"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { ProtectedRoute } from "@/components/protected-route"
 
 export default function SellPage() {
   const router = useRouter()
@@ -51,29 +52,10 @@ export default function SellPage() {
     }
   }
 
-  if (!user) {
-    return (
+  return (
+    <ProtectedRoute>
       <div className="min-h-screen bg-background">
         <Header />
-        <main className="container mx-auto px-4 py-8">
-          <div className="max-w-2xl mx-auto">
-            <Card>
-              <CardContent className="p-6 text-center">
-                <p className="mb-4">商品を出品するにはログインが必要です</p>
-                <Button asChild>
-                  <a href="/login">ログインページへ</a>
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-        </main>
-      </div>
-    )
-  }
-
-  return (
-    <div className="min-h-screen bg-background">
-      <Header />
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-2xl mx-auto">
           <h1 className="text-3xl font-bold mb-2">商品を出品する</h1>
@@ -81,7 +63,7 @@ export default function SellPage() {
             不要になった教科書や物品を出品しましょう
           </p>
           <p className="text-sm text-muted-foreground mb-6">
-            出品者: {user.displayName} (ID: {user.uid})
+            出品者: {user!.displayName} (ID: {user!.uid})
           </p>
 
           {error && (
@@ -138,6 +120,7 @@ export default function SellPage() {
           </div>
         </div>
       </main>
-    </div>
+      </div>
+    </ProtectedRoute>
   )
 }

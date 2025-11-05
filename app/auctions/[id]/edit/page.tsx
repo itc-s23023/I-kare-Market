@@ -1,3 +1,6 @@
+"use client"
+
+import { use } from "react"
 import { Header } from "@/components/header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -10,9 +13,10 @@ import { ArrowLeft, ExternalLink, Trash2 } from "lucide-react"
 import Link from "next/link"
 import { mockAuctions } from "@/lib/mock-data"
 import { notFound } from "next/navigation"
+import { ProtectedRoute } from "@/components/protected-route"
 
-export default async function EditAuctionPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
+export default function EditAuctionPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params)
   const auction = mockAuctions.find((a) => a.id === id)
 
   if (!auction) {
@@ -20,8 +24,9 @@ export default async function EditAuctionPage({ params }: { params: Promise<{ id
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
+    <ProtectedRoute>
+      <div className="min-h-screen bg-background">
+        <Header />
 
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-2xl mx-auto">
@@ -141,6 +146,7 @@ export default async function EditAuctionPage({ params }: { params: Promise<{ id
           </div>
         </div>
       </main>
-    </div>
+      </div>
+    </ProtectedRoute>
   )
 }
