@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { collection, addDoc, getDocs, doc, getDoc, updateDoc, query, where, orderBy, deleteDoc, writeBatch, serverTimestamp } from "firebase/firestore"
-import { db } from "@/components/firebaseConfig"
+import { db } from "@/lib/firebaseConfig"
 import { useAuth } from "@/components/auth-provider"
 
 export interface Auction {

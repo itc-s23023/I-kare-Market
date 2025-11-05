@@ -11,7 +11,7 @@ import { Send, Check } from "lucide-react"
 import { useAuth } from "@/components/auth-provider"
 import { useChat } from "@/hooks/useChat"
 import { doc, getDoc } from "firebase/firestore"
-import { db } from "@/components/firebaseConfig"
+import { db } from "@/lib/firebaseConfig"
 import Image from "next/image"
 import { notFound } from "next/navigation"
 
@@ -41,6 +41,7 @@ export default function ChatPage({ params }: { params: Promise<{ productId: stri
             images: Array.isArray(data.image_urls) ? data.image_urls : [data.image_url || "/placeholder.jpg"],
             sellerId: data.userid || "",
             sellerName: data.sellerName || "匿名ユーザー",
+            sellerImage: data.sellerImage || "/placeholder-user.jpg",
             sellerRating: data.sellerRating || 0,
             createdAt: data.createdAt || "",
             status: data.status || "active",
@@ -178,7 +179,7 @@ export default function ChatPage({ params }: { params: Promise<{ productId: stri
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src="/seller-avatar.png" />
+                  <AvatarImage src={product.sellerImage || "/placeholder-user.jpg"} />
                   <AvatarFallback>{product.sellerName[0]}</AvatarFallback>
                 </Avatar>
                 {product.sellerName}とのチャット
@@ -227,10 +228,10 @@ export default function ChatPage({ params }: { params: Promise<{ productId: stri
                           className={`flex gap-3 items-end ${isCurrentUser ? "justify-end flex-row-reverse" : "justify-start"}`}
                         >
                           <Avatar className="h-8 w-8 shrink-0">
-                            <AvatarImage src="/diverse-user-avatars.png" />
+                            <AvatarImage src={isCurrentUser ? (user?.photoURL || "/placeholder-user.jpg") : (product.sellerImage || "/placeholder-user.jpg")} />
                             <AvatarFallback>{message.senderName[0]}</AvatarFallback>
                           </Avatar>
-                          <div className={`flex-1 flex flex-col ${isCurrentUser ? "items-end" : "items-start"}`}>
+                          <div className={`flex-1 flex flex-col ${isCurrentUser ? "items-end" : "items-start"}`}> 
                             <div
                               className={`rounded-lg px-4 py-2 max-w-[80%] shadow ${
                                 isCurrentUser

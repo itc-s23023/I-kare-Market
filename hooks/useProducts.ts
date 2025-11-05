@@ -1,8 +1,10 @@
 "use client"
 
 import { useState, useEffect } from "react"
+
+
 import { collection, getDocs, query, where, orderBy } from "firebase/firestore"
-import { db } from "@/components/firebaseConfig"
+import { db } from "@/lib/firebaseConfig"
 
 export interface Product {
   id: string

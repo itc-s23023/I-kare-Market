@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { signInWithPopup, signOut, onAuthStateChanged, User } from "firebase/auth"
-import { auth, googleProvider } from "@/components/firebaseConfig"
+import { auth, googleProvider } from "@/lib/firebaseConfig"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useEffect } from "react"

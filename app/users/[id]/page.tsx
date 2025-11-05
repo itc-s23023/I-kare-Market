@@ -10,7 +10,7 @@ import { Star, Package, ShoppingBag, Calendar } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { collection, query, where, getDocs } from "firebase/firestore"
-import { db } from "@/components/firebaseConfig"
+import { db } from "@/lib/firebaseConfig"
 
 interface UserProfile {
   id: string
