@@ -26,8 +26,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-#firebase 
-firebaseConfig.js
-
 #GitHub Copilot
 .github
