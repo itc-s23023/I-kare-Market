@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Send, Check } from "lucide-react"
 import { useAuth } from "@/components/auth-provider"
 import { useChat } from "@/hooks/useChat"
-import { doc, getDoc } from "firebase/firestore"
+import { doc, getDoc, setDoc } from "firebase/firestore"
 import { db } from "@/lib/firebaseConfig"
 import Image from "next/image"
 import { notFound } from "next/navigation"
@@ -69,10 +69,43 @@ export default function ChatPage({ params }: { params: Promise<{ productId: stri
   const { user } = useAuth()
 
   // useChat: products/{productId}/chat サブコレクションを購読
-  const { messages: chatMessages, loading: chatLoading, error: chatError, sendMessage } = useChat(
+  const { messages: chatMessages, loading: chatLoading, error: chatError, sendMessage, chatUsers } = useChat(
     "products",
     productId
   )
+
+  // chat meta(users) を作成：購入者がチャットを開いたときにbuyer情報を保存する
+  useEffect(() => {
+    if (!product || !user) return
+    // 購入者が開いた場合のみ buyer 情報を書き込む（出品者が開いたときは書き込まない）
+    if (user.uid === product.sellerId) return
+
+    const writeMeta = async () => {
+      try {
+        const metaRef = doc(db, "products", productId, "chat", "meta")
+        await setDoc(
+          metaRef,
+          {
+            users: {
+              seller: {
+                id: product.sellerId,
+                imageURL: product.sellerImage || "/placeholder-user.jpg",
+              },
+              buyer: {
+                id: user.uid,
+                imageURL: user.photoURL || "/placeholder-user.jpg",
+              },
+            },
+          },
+          { merge: true }
+        )
+      } catch (e) {
+        console.error("chat meta set error", e)
+      }
+    }
+
+    writeMeta()
+  }, [product, user, productId])
   // メッセージを日付ごとにグループ化する関数
   function groupMessagesByDate(messages: Message[]): { [date: string]: Message[] } {
     const groups: { [date: string]: Message[] } = {}
@@ -178,11 +211,23 @@ export default function ChatPage({ params }: { params: Promise<{ productId: stri
           <Card className="mb-6">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={product.sellerImage || "/placeholder-user.jpg"} />
-                  <AvatarFallback>{product.sellerName[0]}</AvatarFallback>
-                </Avatar>
-                {product.sellerName}とのチャット
+                {/* チャット相手（自分が出品者なら購入者、それ以外は出品者）を表示 */}
+                {(() => {
+                  const isSeller = user ? user.uid === product.sellerId : false
+                  const counterpartImage = isSeller
+                    ? chatUsers?.buyerImage || "/placeholder-user.jpg"
+                    : chatUsers?.sellerImage || product.sellerImage || "/placeholder-user.jpg"
+                  const counterpartLabel = isSeller ? "購入者とのチャット" : `${product.sellerName}とのチャット`
+                  return (
+                    <>
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={counterpartImage} />
+                        <AvatarFallback>{(isSeller ? "相" : product.sellerName[0])}</AvatarFallback>
+                      </Avatar>
+                      {counterpartLabel}
+                    </>
+                  )
+                })()}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -228,7 +273,19 @@ export default function ChatPage({ params }: { params: Promise<{ productId: stri
                           className={`flex gap-3 items-end ${isCurrentUser ? "justify-end flex-row-reverse" : "justify-start"}`}
                         >
                           <Avatar className="h-8 w-8 shrink-0">
-                            <AvatarImage src={isCurrentUser ? (user?.photoURL || "/placeholder-user.jpg") : (product.sellerImage || "/placeholder-user.jpg")} />
+                            {/* メッセージ送信者の画像は chatUsers を優先して参照 */}
+                            {(() => {
+                              if (isCurrentUser) {
+                                return <AvatarImage src={user?.photoURL || "/placeholder-user.jpg"} />
+                              }
+                              // 相手の画像を chatUsers から決定
+                              let otherImage = product.sellerImage || "/placeholder-user.jpg"
+                              if (chatUsers) {
+                                if (chatUsers.sellerId === message.senderId) otherImage = chatUsers.sellerImage || otherImage
+                                else if (chatUsers.buyerId === message.senderId) otherImage = chatUsers.buyerImage || otherImage
+                              }
+                              return <AvatarImage src={otherImage} />
+                            })()}
                             <AvatarFallback>{message.senderName[0]}</AvatarFallback>
                           </Avatar>
                           <div className={`flex-1 flex flex-col ${isCurrentUser ? "items-end" : "items-start"}`}> 

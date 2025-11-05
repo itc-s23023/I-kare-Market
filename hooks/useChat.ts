@@ -8,6 +8,7 @@ import {
   query,
   orderBy,
   onSnapshot,
+  doc,
   DocumentData,
   QuerySnapshot,
 } from "firebase/firestore"
@@ -21,6 +22,15 @@ export type ChatMessage = {
   createdAt: Date | null
 }
 
+export type ChatUsers =
+  | {
+      sellerId?: string
+      sellerImage?: string
+      buyerId?: string
+      buyerImage?: string
+    }
+  | null
+
 /**
  * useChat hook
  * - pathRoot: 'products' or 'auctions'
@@ -30,7 +40,9 @@ export function useChat(pathRoot: "products" | "auctions", id: string) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [chatUsers, setChatUsers] = useState<ChatUsers>(null)
   const unsubscribeRef = useRef<() => void | null>(null)
+  const unsubscribeMetaRef = useRef<() => void | null>(null)
 
   useEffect(() => {
     if (!id) return
@@ -67,9 +79,46 @@ export function useChat(pathRoot: "products" | "auctions", id: string) {
       )
 
       unsubscribeRef.current = unsub
+      // subscribe to meta doc in chat collection (doc id: 'meta') to get users info
+      try {
+        const metaDocRef = doc(db, pathRoot, id, "chat", "meta")
+        const unsubMeta = onSnapshot(
+          metaDocRef,
+          (snap) => {
+            if (snap.exists()) {
+              const d = snap.data() as DocumentData
+              // expect structure: { users: { seller: { id, imageURL }, buyer: { id, imageURL } } }
+              const users = d.users || null
+              if (users) {
+                setChatUsers({
+                  sellerId: users.seller?.id,
+                  sellerImage: users.seller?.imageURL,
+                  buyerId: users.buyer?.id,
+                  buyerImage: users.buyer?.imageURL,
+                })
+              } else {
+                setChatUsers(null)
+              }
+            } else {
+              setChatUsers(null)
+            }
+          },
+          (err) => {
+            console.error("useChat meta onSnapshot error:", err)
+          }
+        )
+        unsubscribeMetaRef.current = unsubMeta
+      } catch (e) {
+        console.error("useChat meta subscription failed", e)
+      }
+
       return () => {
         unsub()
         unsubscribeRef.current = null
+        if (unsubscribeMetaRef.current) {
+          unsubscribeMetaRef.current()
+          unsubscribeMetaRef.current = null
+        }
       }
     } catch (e: any) {
       setError(e.message || "不明なエラー")
@@ -90,5 +139,5 @@ export function useChat(pathRoot: "products" | "auctions", id: string) {
     }
   }
 
-  return { messages, loading, error, sendMessage }
+  return { messages, loading, error, sendMessage, chatUsers }
 }
