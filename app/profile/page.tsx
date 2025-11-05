@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Star, Package, ShoppingBag, Calendar, Heart } from "lucide-react"
-import { mockUser, mockAuctions } from "@/lib/mock-data"
+import { mockUser } from "@/lib/mock-data"
 import { ProductCard } from "@/components/product-card"
 import { AuctionCard } from "@/components/auction-card"
 import Link from "next/link"
@@ -14,6 +14,7 @@ import Link from "next/link"
 import { useProducts } from "@/hooks/useProducts"
 import { usePurchaseHistory } from "@/hooks/usePurchase_history"
 import { useLikes } from "@/hooks/uselike"
+import { useAuctions } from "@/hooks/useAuctions"
 import { useAuth } from "@/components/auth-provider"
 import { ProtectedRoute } from "@/components/protected-route"
 
@@ -35,11 +36,19 @@ export default function ProfilePage() {
   } = usePurchaseHistory(user?.uid || "")
   const {
     likedProducts = [],
+    likedAuctions = [],
     loading: likesLoading,
   } = useLikes()
+  const {
+    auctions: allAuctions = [],
+    loading: auctionsLoading,
+    error: auctionsError,
+  } = useAuctions()
 
-  // keep auctions/reviews from mock data for now
-  const userAuctions = mockAuctions.filter((a) => a.sellerId === (user?.uid || "user1"))
+  // ユーザーが出品したオークション商品をフィルタリング（アクティブなもののみ）
+  const userAuctions = allAuctions.filter((auction) => 
+    auction.sellerId === user?.uid && auction.status === "active"
+  )
 
   const profile = {
     name: user?.displayName || mockUser.name,
@@ -110,7 +119,7 @@ export default function ProfilePage() {
                     フリマ ({productsLoading ? "読み込み中..." : userProducts.length})
                   </TabsTrigger>
                   <TabsTrigger value="auction">
-                    オークション ({userAuctions.length})
+                    オークション ({auctionsLoading ? "読み込み中..." : userAuctions.length})
                   </TabsTrigger>
                 </TabsList>
 
@@ -142,16 +151,23 @@ export default function ProfilePage() {
                 </TabsContent>
 
                 <TabsContent value="auction">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {userAuctions.map((auction) => (
-                      <Link key={auction.id} href={`/auctions/${auction.id}`}>
-                        <a style={{ display: "block", height: "100%" }}>
+                  {auctionsLoading ? (
+                    <div className="text-center py-12">読み込み中...</div>
+                  ) : auctionsError ? (
+                    <div className="text-center py-12 text-red-500">{auctionsError}</div>
+                  ) : userAuctions.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {userAuctions.map((auction) => (
+                        <Link
+                          key={auction.id}
+                          href={`/auctions/${auction.id}`}
+                          style={{ display: "block", height: "100%" }}
+                        >
                           <AuctionCard auction={auction} />
-                        </a>
-                      </Link>
-                    ))}
-                  </div>
-                  {userAuctions.length === 0 && (
+                        </Link>
+                      ))}
+                    </div>
+                  ) : (
                     <div className="text-center py-12">
                       <p className="text-muted-foreground mb-4">出品中のオークションはありません</p>
                       <Button asChild>
@@ -229,23 +245,65 @@ export default function ProfilePage() {
             <TabsContent value="likes" className="mt-6">
               {likesLoading ? (
                 <div className="text-center py-12">読み込み中...</div>
-              ) : likedProducts.length > 0 ? (
-                <div>
-                  <div className="mb-4">
-                    <h3 className="text-lg font-semibold">いいねした商品 ({likedProducts.length})</h3>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {likedProducts.map((product) => (
-                      <Link
-                        key={product.id}
-                        href={`/products/${product.id}`}
-                        style={{ display: "block", height: "100%" }}
-                      >
-                        <ProductCard product={product} />
-                      </Link>
-                    ))}
-                  </div>
-                </div>
+              ) : (likedProducts.length > 0 || likedAuctions.length > 0) ? (
+                <Tabs defaultValue="products" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2 mb-6">
+                    <TabsTrigger value="products">
+                      フリマ ({likedProducts.length})
+                    </TabsTrigger>
+                    <TabsTrigger value="auctions">
+                      オークション ({likedAuctions.length})
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="products">
+                    {likedProducts.length > 0 ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {likedProducts.map((product) => (
+                          <Link
+                            key={product.id}
+                            href={`/products/${product.id}`}
+                            style={{ display: "block", height: "100%" }}
+                          >
+                            <ProductCard product={product} />
+                          </Link>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-12">
+                        <Heart className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                        <p className="text-muted-foreground mb-4">いいねしたフリマ商品はありません</p>
+                        <Button asChild>
+                          <Link href="/">フリマ商品を探す</Link>
+                        </Button>
+                      </div>
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="auctions">
+                    {likedAuctions.length > 0 ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {likedAuctions.map((auction) => (
+                          <Link
+                            key={auction.id}
+                            href={`/auctions/${auction.id}`}
+                            style={{ display: "block", height: "100%" }}
+                          >
+                            <AuctionCard auction={auction} />
+                          </Link>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-12">
+                        <Heart className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                        <p className="text-muted-foreground mb-4">いいねしたオークション商品はありません</p>
+                        <Button asChild>
+                          <Link href="/auctions">オークション商品を探す</Link>
+                        </Button>
+                      </div>
+                    )}
+                  </TabsContent>
+                </Tabs>
               ) : (
                 <div className="text-center py-12">
                   <Heart className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />

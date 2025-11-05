@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Clock, TrendingUp, User, Heart } from "lucide-react"
 import Image from "next/image"
+import { useLikes } from "@/hooks/uselike"
 import type { Auction } from "@/hooks/useAuctions"
 
 interface AuctionCardProps {
@@ -30,14 +31,16 @@ function getTimeRemaining(endTime: string) {
 }
 
 export function AuctionCard({ auction }: AuctionCardProps) {
+  const { isAuctionLiked, toggleAuctionLike } = useLikes()
   const timeRemaining = getTimeRemaining(auction.endTime)
   const isEnding = timeRemaining.includes("時間") || timeRemaining.includes("分")
   const hasNoBids = auction.bidCount === 0
-  const [isLiked, setIsLiked] = useState(false)
 
   const handleLikeClick = (e: React.MouseEvent) => {
     e.preventDefault()
-    setIsLiked(!isLiked)
+    if (auction.id) {
+      toggleAuctionLike(auction.id)
+    }
   }
 
   return (
@@ -60,7 +63,7 @@ export function AuctionCard({ auction }: AuctionCardProps) {
           className="absolute top-3 right-3 h-9 w-9 rounded-full shadow-md"
           onClick={handleLikeClick}
         >
-          <Heart className={`h-5 w-5 ${isLiked ? "fill-red-500 text-red-500" : ""}`} />
+          <Heart className={`h-5 w-5 ${auction.id && isAuctionLiked(auction.id) ? "fill-red-500 text-red-500" : ""}`} />
         </Button>
         {auction.status === "ended" && (
           <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
