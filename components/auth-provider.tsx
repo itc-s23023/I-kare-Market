@@ -42,9 +42,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           username: user.displayName || "匿名ユーザー",
           email: user.email,
           avatar: user.photoURL || "",
-          evaluation: [], 
-          sales: 0, 
+          evaluation: [],
           likeProductId: [], 
+          Sales:0,
+          transactions: 0,
+
         })
         
         console.log("✅ ユーザープロフィール作成完了")
