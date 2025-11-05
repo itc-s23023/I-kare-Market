@@ -1,3 +1,5 @@
+"use client"
+
 import { Header } from "@/components/header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -9,9 +11,36 @@ import { ProductCard } from "@/components/product-card"
 import { AuctionCard } from "@/components/auction-card"
 import Link from "next/link"
 
+import { useProducts } from "@/hooks/useProducts"
+import { usePurchaseHistory } from "@/hooks/usePurchase_history"
+import { useAuth } from "@/components/auth-provider"
+
 export default function ProfilePage() {
-  const userProducts = mockProducts.filter((p) => p.sellerId === "user1")
-  const userAuctions = mockAuctions.filter((a) => a.sellerId === "user1")
+  const { user } = useAuth()
+  // fetch user-specific data; hooks should handle empty userId gracefully
+  const {
+    products: userProducts = [],
+    loading: productsLoading,
+    error: productsError,
+  } = useProducts(user?.uid || "")
+  const {
+    purchaseHistory = [],
+    loading: historyLoading,
+    error: historyError,
+  } = usePurchaseHistory(user?.uid || "")
+
+  // keep auctions/likes/reviews from mock data for now
+  const userAuctions = mockAuctions.filter((a) => a.sellerId === (user?.uid || "user1"))
+  const likedProductsCount = mockLikedItems.filter((item) => item.type === "product").length
+  const likedAuctionsCount = mockLikedItems.filter((item) => item.type === "auction").length
+
+  const profile = {
+    name: user?.displayName || mockUser.name,
+    avatar: (user as any)?.photoURL || mockUser.avatar || "/placeholder.svg",
+    rating: mockUser.rating,
+    reviewCount: mockUser.reviewCount,
+    joinedDate: mockUser.joinedDate,
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -23,21 +52,21 @@ export default function ProfilePage() {
             <CardContent className="p-6">
               <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
                 <Avatar className="h-24 w-24">
-                  <AvatarImage src={mockUser.avatar || "/placeholder.svg"} />
-                  <AvatarFallback>{mockUser.name[0]}</AvatarFallback>
+                  <AvatarImage src={profile.avatar} />
+                  <AvatarFallback>{profile.name?.[0]}</AvatarFallback>
                 </Avatar>
                 <div className="flex-1 text-center sm:text-left">
-                  <h1 className="text-2xl font-bold mb-2">{mockUser.name}</h1>
+                  <h1 className="text-2xl font-bold mb-2">{profile.name}</h1>
                   <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 mb-4">
                     <div className="flex items-center gap-1">
                       <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                      <span className="font-semibold">{mockUser.rating}</span>
-                      <span className="text-muted-foreground">({mockUser.reviewCount}件)</span>
+                      <span className="font-semibold">{profile.rating}</span>
+                      <span className="text-muted-foreground">({profile.reviewCount}件)</span>
                     </div>
                     <div className="flex items-center gap-1 text-muted-foreground">
                       <Calendar className="h-4 w-4" />
                       <span className="text-sm">
-                        登録日: {new Date(mockUser.joinedDate).toLocaleDateString("ja-JP")}
+                        登録日: {new Date(profile.joinedDate).toLocaleDateString("ja-JP")}
                       </span>
                     </div>
                   </div>
@@ -69,19 +98,34 @@ export default function ProfilePage() {
             <TabsContent value="selling" className="mt-6">
               <Tabs defaultValue="flea-market" className="w-full">
                 <TabsList className="grid w-full grid-cols-2 mb-6">
-                  <TabsTrigger value="flea-market">フリマ ({userProducts.length})</TabsTrigger>
-                  <TabsTrigger value="auction">オークション ({userAuctions.length})</TabsTrigger>
+                  <TabsTrigger value="flea-market">
+                    フリマ ({productsLoading ? "読み込み中..." : userProducts.length})
+                  </TabsTrigger>
+                  <TabsTrigger value="auction">
+                    オークション ({userAuctions.length})
+                  </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="flea-market">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {userProducts.map((product) => (
-                      <Link key={product.id} href={`/products/${product.id}/edit`}>
-                        <ProductCard product={product} />
-                      </Link>
-                    ))}
-                  </div>
-                  {userProducts.length === 0 && (
+                  {productsLoading ? (
+                    <div className="text-center py-12">読み込み中...</div>
+                  ) : productsError ? (
+                    <div className="text-center py-12 text-red-500">{productsError}</div>
+                  ) : userProducts.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {userProducts.map((product: any) => (
+                      <Link
+                      key={product.id}
+                      href={`/products/${product.id}`}
+                      style={{ display: "block", height: "100%" }}
+                    >
+                      <ProductCard product={product} />
+                    </Link>
+                    
+                     
+                      ))}
+                    </div>
+                  ) : (
                     <div className="text-center py-12">
                       <p className="text-muted-foreground mb-4">出品中の商品はありません</p>
                       <Button asChild>
@@ -94,8 +138,10 @@ export default function ProfilePage() {
                 <TabsContent value="auction">
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     {userAuctions.map((auction) => (
-                      <Link key={auction.id} href={`/auctions/${auction.id}/edit`}>
-                        <AuctionCard auction={auction} />
+                      <Link key={auction.id} href={`/auctions/${auction.id}`}>
+                        <a style={{ display: "block", height: "100%" }}>
+                          <AuctionCard auction={auction} />
+                        </a>
                       </Link>
                     ))}
                   </div>
@@ -112,7 +158,11 @@ export default function ProfilePage() {
             </TabsContent>
 
             <TabsContent value="buying" className="mt-6">
-              {mockPurchaseHistory.length > 0 ? (
+              {historyLoading ? (
+                <div className="text-center py-12">読み込み中...</div>
+              ) : historyError ? (
+                <div className="text-center py-12 text-red-500">{historyError}</div>
+              ) : purchaseHistory && purchaseHistory.length > 0 ? (
                 <div className="overflow-x-auto">
                   <table className="min-w-full text-sm bg-card rounded-xl shadow-md border-separate border-spacing-0">
                     <thead>
@@ -124,25 +174,29 @@ export default function ProfilePage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {mockPurchaseHistory.map((purchase, idx, arr) => (
+                      {purchaseHistory.map((purchase: any, idx: number, arr: any[]) => (
                         <tr
                           key={purchase.id}
                           className={`transition-colors hover:bg-accent/60 ${idx === arr.length - 1 ? 'last:rounded-b-xl' : ''}`}
                           style={{ boxShadow: '0 1px 0 0 #e5e7eb' }}
                         >
                           <td className="px-6 py-4 font-semibold">
-                            {purchase.productName}
+                            {purchase.productName || purchase.product?.productname || "—"}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            {new Date(purchase.purchaseDate).toLocaleDateString("ja-JP", { year: "numeric", month: "2-digit", day: "2-digit" })}
+                            {purchase.purchaseDate
+                              ? new Date(purchase.purchaseDate).toLocaleDateString("ja-JP", { year: "numeric", month: "2-digit", day: "2-digit" })
+                              : purchase.createdAt
+                                ? new Date(purchase.createdAt).toLocaleDateString("ja-JP")
+                                : "—"}
                           </td>
                           <td className="px-6 py-4 text-right font-mono text-base text-green-700">
-                            ¥{purchase.price.toLocaleString()}
+                            ¥{(purchase.price ?? purchase.product?.price ?? 0).toLocaleString()}
                           </td>
                           <td className="px-6 py-4 flex items-center gap-2">
                             <div className="flex items-center gap-2">
                               <Avatar className="h-7 w-7">
-                                <AvatarImage src="/seller-avatar.png" />
+                                <AvatarImage src={purchase.sellerAvatar || "/seller-avatar.png"} />
                                 <AvatarFallback>{(purchase.sellerName || "-").charAt(0)}</AvatarFallback>
                               </Avatar>
                               {purchase.sellerId ? (
@@ -171,10 +225,10 @@ export default function ProfilePage() {
                 <Tabs defaultValue="products" className="w-full">
                   <TabsList className="grid w-full grid-cols-2 mb-6">
                     <TabsTrigger value="products">
-                      フリマ ({mockLikedItems.filter((item) => item.type === "product").length})
+                      フリマ ({likedProductsCount})
                     </TabsTrigger>
                     <TabsTrigger value="auctions">
-                      オークション ({mockLikedItems.filter((item) => item.type === "auction").length})
+                      オークション ({likedAuctionsCount})
                     </TabsTrigger>
                   </TabsList>
 
