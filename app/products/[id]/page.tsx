@@ -12,7 +12,7 @@ import { MessageCircle, Heart, ShoppingCart, AlertCircle, User, Calendar, Packag
 import Image from "next/image"
 import Link from "next/link"
 import { doc, getDoc } from "firebase/firestore"
-import { db } from "@/components/firebaseConfig"
+import { db } from "@/lib/firebaseConfig"
 import { useEffect } from "react"
 
 interface Product {

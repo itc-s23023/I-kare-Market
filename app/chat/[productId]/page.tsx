@@ -11,7 +11,7 @@ import { Send, Check } from "lucide-react"
 import { useAuth } from "@/components/auth-provider"
 import { useChat } from "@/hooks/useChat"
 import { doc, getDoc } from "firebase/firestore"
-import { db } from "@/components/firebaseConfig"
+import { db } from "@/lib/firebaseConfig"
 import Image from "next/image"
 import { notFound } from "next/navigation"
 

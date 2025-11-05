@@ -11,7 +11,7 @@ import {
   DocumentData,
   QuerySnapshot,
 } from "firebase/firestore"
-import { db } from "@/components/firebaseConfig"
+import { db } from "@/lib/firebaseConfig"
 
 export type ChatMessage = {
   id: string

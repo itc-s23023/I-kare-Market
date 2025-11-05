@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage"
-import { storage } from "@/components/firebaseConfig"
+import { storage } from "@/lib/firebaseConfig"
 
 export default function AuctionSellPage() {
   const router = useRouter()

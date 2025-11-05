@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { collection, getDocs } from "firebase/firestore"
-import { db } from "@/components/firebaseConfig"
+import { db } from "@/lib/firebaseConfig"
 
 export interface Product {
   id: string

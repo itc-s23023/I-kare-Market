@@ -12,7 +12,7 @@ import { mockNotifications } from "@/lib/mock-data"
 import { useRouter, usePathname } from "next/navigation"
 import { useAuth } from "@/components/auth-provider"
 import { signOut } from "firebase/auth"
-import { auth } from "@/components/firebaseConfig"
+import { auth } from "@/lib/firebaseConfig"
 
 export function Header() {
   const router = useRouter()
