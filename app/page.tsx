@@ -8,6 +8,7 @@ import { Search, Plus } from "lucide-react"
 import { useProducts } from "@/hooks/useProducts"
 import { useState } from "react"
 import Link from "next/link"
+import { TopSellers } from "@/components/top-sellers"
 
 export default function HomePage() {
   const { products, loading, error } = useProducts()
@@ -146,6 +147,11 @@ export default function HomePage() {
             )}
           </>
         )}
+
+        {/* 売上ランキング */}
+        <div className="mt-12">
+          <TopSellers />
+        </div>
       </main>
     </div>
   )
