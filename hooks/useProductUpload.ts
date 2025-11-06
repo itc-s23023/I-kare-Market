@@ -104,11 +104,12 @@ export function useProductUpload() {
   }
 
   const submitProduct = async (productData: {
-    productname: string
-    content: string
-    price: number
-    is_trading: boolean
-    images: File[]
+  productname: string
+  content: string
+  price: number
+  is_trading: boolean
+  images: File[]
+  condition: string
   }) => {
     console.log("商品出品開始:", productData)
     
@@ -149,6 +150,7 @@ export function useProductUpload() {
   userid: user.uid,
   content: productData.content,
   is_trading: productData.is_trading,
+  condition: productData.condition,
   createdAt: new Date().toISOString(),
   status: "active",
   sellerName: user.displayName || "匿名ユーザー",
