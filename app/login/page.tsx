@@ -25,6 +25,32 @@ export default function LoginPage() {
     try {
       const result = await signInWithPopup(auth, googleProvider)
       console.log("ログイン成功:", result.user)
+      // Firestoreにユーザー情報を保存
+      const { db } = await import("@/lib/firebaseConfig")
+      const { setDoc, doc, getDoc } = await import("firebase/firestore")
+      const userRef = doc(db, "users", result.user.uid)
+      const userSnap = await getDoc(userRef)
+      if (!userSnap.exists()) {
+        await setDoc(userRef, {
+          uid: result.user.uid,
+          username: result.user.displayName || "",
+          email: result.user.email || "",
+          avatar: result.user.photoURL || "",
+          joinedDate: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          transactions: 0,
+          Sales: 0,
+          evalution: 0,
+          likeProductId: []
+        })
+        console.log("ユーザー新規登録: FirestoreにjoinedDateを保存")
+      } else {
+        // 既存ユーザーはupdatedAtのみ更新
+        await setDoc(userRef, {
+          ...userSnap.data(),
+          updatedAt: new Date().toISOString()
+        })
+      }
     } catch (error) {
       console.error("ログインエラー:", error)
       const errorMessage = error instanceof Error ? error.message : "不明なエラーが発生しました"
