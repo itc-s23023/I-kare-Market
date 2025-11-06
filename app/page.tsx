@@ -17,8 +17,7 @@ export default function HomePage() {
 
   const filteredProducts = products.filter(product =>
     product.productname.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (product.category?.toLowerCase() || "").includes(searchTerm.toLowerCase())
+    product.content.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
   return (
