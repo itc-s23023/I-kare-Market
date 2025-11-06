@@ -179,7 +179,7 @@ export default function UserProfilePage() {
                   <div className="flex items-center gap-4 text-muted-foreground">
                     <div className="flex items-center gap-1">
                       <Calendar className="h-4 w-4" />
-                      <span className="text-sm">登録日: {new Date(userProfile.joinedDate).toLocaleDateString("ja-JP")}</span>
+                      <span className="text-sm">登録日: {userProfile.joinedDate ? new Date(userProfile.joinedDate).toLocaleDateString("ja-JP") : "不明"}</span>
                     </div>
                   </div>
                 </div>
