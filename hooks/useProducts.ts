@@ -15,7 +15,6 @@ export interface Product {
   userid: string
   content: string
   is_trading: boolean
-  category?: string
   condition?: string
   createdAt: string
   status: string
@@ -65,7 +64,6 @@ export function useProducts(userId?: string) {
             userid: data?.userid || "",
             content: data?.content || "",
             is_trading: !!data?.is_trading,
-            category: data?.category || "other",
             condition: data?.condition || "good",
             createdAt,
             status: data?.status || "active",

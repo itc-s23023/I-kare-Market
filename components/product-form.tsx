@@ -14,7 +14,6 @@ interface ProductFormProps {
     content: string
     price: number
     is_trading: boolean
-    category: string
     condition: string
   }) => void
   isSubmitting: boolean
@@ -25,7 +24,6 @@ export function ProductForm({ onSubmit, isSubmitting }: ProductFormProps) {
   const [content, setContent] = useState("")
   const [price, setPrice] = useState("")
   const [is_trading, setIsTrading] = useState(false)
-  const [category, setCategory] = useState("")
   const [condition, setCondition] = useState("")
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -41,7 +39,6 @@ export function ProductForm({ onSubmit, isSubmitting }: ProductFormProps) {
       content,
       price: Number(price),
       is_trading,
-      category,
       condition
     })
 
@@ -50,7 +47,7 @@ export function ProductForm({ onSubmit, isSubmitting }: ProductFormProps) {
     setContent("")
     setPrice("")
     setIsTrading(false)
-    setCategory("")
+  // ...existing code...
     setCondition("")
   }
 

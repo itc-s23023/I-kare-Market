@@ -99,13 +99,8 @@ export function ProductCard({ product, showActions = false }: ProductCardProps) 
           </h3>
         </div>
 
-        {/* カテゴリーと商品状態 */}
+        {/* 商品状態のみ表示 */}
         <div className="flex items-center gap-2 mb-2">
-          {product.category && (
-            <Badge variant="secondary" className="text-xs">
-              {product.category}
-            </Badge>
-          )}
           {product.condition && (
             <Badge variant="outline" className="text-xs">
               {getConditionLabel(product.condition)}
