@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Star, Package, ShoppingBag, Calendar } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import Image from "next/image"
 import { collection, query, where, getDocs } from "firebase/firestore"
@@ -18,6 +19,8 @@ interface UserProfile {
   email: string
   joinedDate: string
   avatar?: string
+  transactions: number
+  evalution: number
 }
 
 interface Product {
@@ -38,11 +41,14 @@ const conditionLabels = {
 }
 
 export default function UserProfilePage() {
+  const [activeVisibleCount, setActiveVisibleCount] = useState(6)
+  const [soldVisibleCount, setSoldVisibleCount] = useState(6)
   const params = useParams()
   const userId = params.id as string
   
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [userProducts, setUserProducts] = useState<Product[]>([])
+  const [soldProducts, setSoldProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -52,33 +58,33 @@ export default function UserProfilePage() {
 
     const fetchUserData = async () => {
       try {
-        // ユーザーの商品を取得してユーザー情報も取得
+        // usersコレクションからユーザー情報取得（ドキュメントIDで直接取得）
+        const { getDoc, doc } = await import("firebase/firestore")
+        const userDocRef = doc(db, "users", userId)
+        const userDocSnap = await getDoc(userDocRef)
+        if (!userDocSnap.exists()) throw new Error("ユーザー情報が見つかりません")
+        const userData = userDocSnap.data()
+
+  // avatar取得
+  const avatarUrl = userData.avatar || "/placeholder.svg"
+  // ユーザー名はusernameで取得
+  const userName = userData.username || "匿名ユーザー"
+  const userEmail = userData.email || ""
+  const earliestDate = userData.joinedDate || new Date().toISOString()
+  // 取引回数（数値）
+  const transactionCount = typeof userData.transactions === "number" ? userData.transactions : 0
+
+        // 商品情報取得（販売中・売却済み）
         const productsQuery = query(
           collection(db, "products"),
           where("userid", "==", userId)
         )
         const productsSnapshot = await getDocs(productsQuery)
-        
         const products: Product[] = []
-        let userName = "匿名ユーザー"
-        let userEmail = ""
-        let earliestDate = new Date().toISOString()
-        
+        const sold: Product[] = []
         productsSnapshot.forEach((doc) => {
           const data = doc.data()
-          
-        
-          if (products.length === 0) {
-            userName = String(data.sellerName || "匿名ユーザー")
-            userEmail = String(data.sellerEmail || "")
-          }
-          
-         
-          if (data.createdAt && data.createdAt < earliestDate) {
-            earliestDate = data.createdAt
-          }
-          
-          products.push({
+          const product: Product = {
             id: doc.id,
             productname: String(data.productname || "商品名なし"),
             image_url: String(data.image_url || "/placeholder.svg"),
@@ -86,22 +92,28 @@ export default function UserProfilePage() {
             status: String(data.status || "active"),
             condition: data.condition ? String(data.condition) : undefined,
             createdAt: String(data.createdAt || new Date().toISOString())
-          })
+          }
+          products.push(product)
+          if (product.status === "sold") {
+            sold.push(product)
+          }
         })
-
-        // 作成日時でソート（新しい順）
         products.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 
+        const evalution = typeof userData.evalution === "number" ? userData.evalution : 0
         const profile: UserProfile = {
           id: userId,
           name: userName,
           email: userEmail,
           joinedDate: earliestDate,
-          avatar: undefined
+          avatar: avatarUrl,
+          transactions: transactionCount,
+          evalution
         }
 
         setUserProfile(profile)
         setUserProducts(products)
+        setSoldProducts(sold)
       } catch (error: any) {
         console.error("❌ ユーザー情報取得エラー:", error)
         setError(`ユーザー情報の取得に失敗しました`)
@@ -149,7 +161,7 @@ export default function UserProfilePage() {
   }
 
   const activeProducts = userProducts.filter(p => p.status === "active")
-  const soldProducts = userProducts.filter(p => p.status === "sold")
+  // soldProductsはuseStateで管理
 
   return (
     <div className="min-h-screen bg-background">
@@ -170,7 +182,7 @@ export default function UserProfilePage() {
                   <div className="flex items-center gap-4 text-muted-foreground">
                     <div className="flex items-center gap-1">
                       <Calendar className="h-4 w-4" />
-                      <span className="text-sm">登録日: {new Date(userProfile.joinedDate).toLocaleDateString("ja-JP")}</span>
+                      <span className="text-sm">登録日: {userProfile.joinedDate ? new Date(userProfile.joinedDate).toLocaleDateString("ja-JP") : "不明"}</span>
                     </div>
                   </div>
                 </div>
@@ -179,8 +191,15 @@ export default function UserProfilePage() {
                   <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-950 px-4 py-2 rounded-lg">
                     <ShoppingBag className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                     <div>
-                      <p className="text-2xl font-bold">{soldProducts.length}</p>
+                      <p className="text-2xl font-bold">{userProfile.transactions}</p>
                       <p className="text-xs text-muted-foreground">売却済み</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 bg-yellow-50 dark:bg-yellow-950 px-4 py-2 rounded-lg">
+                    <Star className="h-5 w-5 text-yellow-500 dark:text-yellow-400" />
+                    <div>
+                      <p className="text-2xl font-bold">{userProfile.evalution}</p>
+                      <p className="text-xs text-muted-foreground">評価</p>
                     </div>
                   </div>
 
@@ -207,7 +226,7 @@ export default function UserProfilePage() {
             </CardHeader>
             <CardContent>
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {activeProducts.map((product) => (
+                {activeProducts.slice(0, activeVisibleCount).map((product) => (
                   <Link key={product.id} href={`/products/${product.id}`}>
                     <Card className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
                       <div className="aspect-square relative bg-muted">
@@ -237,6 +256,13 @@ export default function UserProfilePage() {
                   </Link>
                 ))}
               </div>
+              {activeProducts.length > activeVisibleCount && (
+                <div className="text-center mt-8">
+                  <Button onClick={() => setActiveVisibleCount(activeVisibleCount + 3)}>
+                    もっと見る
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
@@ -251,7 +277,7 @@ export default function UserProfilePage() {
             </CardHeader>
             <CardContent>
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {soldProducts.map((product) => (
+                {soldProducts.slice(0, soldVisibleCount).map((product) => (
                   <Link key={product.id} href={`/products/${product.id}`}>
                     <Card className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer opacity-60">
                       <div className="aspect-square relative bg-muted">
@@ -282,6 +308,13 @@ export default function UserProfilePage() {
                   </Link>
                 ))}
               </div>
+              {soldProducts.length > soldVisibleCount && (
+                <div className="text-center mt-8">
+                  <Button onClick={() => setSoldVisibleCount(soldVisibleCount + 3)}>
+                    もっと見る
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
