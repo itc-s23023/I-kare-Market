@@ -13,6 +13,7 @@ import { TopSellers } from "@/components/top-sellers"
 export default function HomePage() {
   const { products, loading, error } = useProducts()
   const [searchTerm, setSearchTerm] = useState("")
+  const [visibleCount, setVisibleCount] = useState(8)
 
   const filteredProducts = products.filter(product =>
     product.productname.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -133,17 +134,26 @@ export default function HomePage() {
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {filteredProducts.map((product) => (
-                  <div key={product.id} className="group cursor-pointer">
-                    <Link href={`/products/${product.id}`}>
-                      <div className="transform transition-transform group-hover:scale-105">
-                        <ProductCard product={product} />
-                      </div>
-                    </Link>
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {filteredProducts.slice(0, visibleCount).map((product) => (
+                    <div key={product.id} className="group cursor-pointer">
+                      <Link href={`/products/${product.id}`}>
+                        <div className="transform transition-transform group-hover:scale-105">
+                          <ProductCard product={product} />
+                        </div>
+                      </Link>
+                    </div>
+                  ))}
+                </div>
+                {filteredProducts.length > visibleCount && (
+                  <div className="text-center mt-8">
+                    <Button onClick={() => setVisibleCount(visibleCount + 8)}>
+                      もっと見る
+                    </Button>
                   </div>
-                ))}
-              </div>
+                )}
+              </>
             )}
           </>
         )}
