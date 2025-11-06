@@ -16,6 +16,7 @@ export default function AuctionsPage() {
   const { closeExpiredAuction } = useAuctionManagement()
   const [searchTerm, setSearchTerm] = useState("")
   const [filter, setFilter] = useState<'all' | 'active' | 'ended'>('all')
+  const [visibleCount, setVisibleCount] = useState(8)
 
   // 期間切れオークションの自動終了チェック
   useEffect(() => {
@@ -84,7 +85,6 @@ export default function AuctionsPage() {
                 オークション
               </h1>
               <p className="text-muted-foreground">入札して欲しい商品を手に入れよう</p>
-              
               {!loading && !error && (
                 <div className="text-sm text-muted-foreground mt-2">
                   {searchTerm ? (
@@ -95,7 +95,6 @@ export default function AuctionsPage() {
                 </div>
               )}
             </div>
-            
             <Button asChild className="shrink-0">
               <Link href="/auctions/sell">
                 <Plus className="w-4 h-4 mr-2" />
@@ -167,17 +166,26 @@ export default function AuctionsPage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {activeAuctions.map((auction) => (
-                      <div key={auction.id} className="group cursor-pointer">
-                        <Link href={`/auctions/${auction.id}`}>
-                          <div className="transform transition-transform group-hover:scale-105">
-                            <AuctionCard auction={auction} />
-                          </div>
-                        </Link>
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                      {activeAuctions.slice(0, visibleCount).map((auction) => (
+                        <div key={auction.id} className="group cursor-pointer">
+                          <Link href={`/auctions/${auction.id}`}>
+                            <div className="transform transition-transform group-hover:scale-105">
+                              <AuctionCard auction={auction} />
+                            </div>
+                          </Link>
+                        </div>
+                      ))}
+                    </div>
+                    {activeAuctions.length > visibleCount && (
+                      <div className="text-center mt-8">
+                        <Button onClick={() => setVisibleCount(visibleCount + 8)}>
+                          もっと見る
+                        </Button>
                       </div>
-                    ))}
-                  </div>
+                    )}
+                  </>
                 )}
               </TabsContent>
 
@@ -188,17 +196,26 @@ export default function AuctionsPage() {
                     <p className="text-muted-foreground">現在アクティブなオークションを確認してみてください。</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {endingSoonAuctions.map((auction) => (
-                      <div key={auction.id} className="group cursor-pointer">
-                        <Link href={`/auctions/${auction.id}`}>
-                          <div className="transform transition-transform group-hover:scale-105">
-                            <AuctionCard auction={auction} />
-                          </div>
-                        </Link>
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                      {endingSoonAuctions.slice(0, visibleCount).map((auction) => (
+                        <div key={auction.id} className="group cursor-pointer">
+                          <Link href={`/auctions/${auction.id}`}>
+                            <div className="transform transition-transform group-hover:scale-105">
+                              <AuctionCard auction={auction} />
+                            </div>
+                          </Link>
+                        </div>
+                      ))}
+                    </div>
+                    {endingSoonAuctions.length > visibleCount && (
+                      <div className="text-center mt-8">
+                        <Button onClick={() => setVisibleCount(visibleCount + 8)}>
+                          もっと見る
+                        </Button>
                       </div>
-                    ))}
-                  </div>
+                    )}
+                  </>
                 )}
               </TabsContent>
             </Tabs>
