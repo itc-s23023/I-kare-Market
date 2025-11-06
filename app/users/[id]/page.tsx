@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Star, Package, ShoppingBag, Calendar } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import Image from "next/image"
 import { collection, query, where, getDocs } from "firebase/firestore"
@@ -40,6 +41,8 @@ const conditionLabels = {
 }
 
 export default function UserProfilePage() {
+  const [activeVisibleCount, setActiveVisibleCount] = useState(6)
+  const [soldVisibleCount, setSoldVisibleCount] = useState(6)
   const params = useParams()
   const userId = params.id as string
   
@@ -223,7 +226,7 @@ export default function UserProfilePage() {
             </CardHeader>
             <CardContent>
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {activeProducts.map((product) => (
+                {activeProducts.slice(0, activeVisibleCount).map((product) => (
                   <Link key={product.id} href={`/products/${product.id}`}>
                     <Card className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
                       <div className="aspect-square relative bg-muted">
@@ -253,6 +256,13 @@ export default function UserProfilePage() {
                   </Link>
                 ))}
               </div>
+              {activeProducts.length > activeVisibleCount && (
+                <div className="text-center mt-8">
+                  <Button onClick={() => setActiveVisibleCount(activeVisibleCount + 3)}>
+                    もっと見る
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
@@ -267,7 +277,7 @@ export default function UserProfilePage() {
             </CardHeader>
             <CardContent>
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {soldProducts.map((product) => (
+                {soldProducts.slice(0, soldVisibleCount).map((product) => (
                   <Link key={product.id} href={`/products/${product.id}`}>
                     <Card className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer opacity-60">
                       <div className="aspect-square relative bg-muted">
@@ -298,6 +308,13 @@ export default function UserProfilePage() {
                   </Link>
                 ))}
               </div>
+              {soldProducts.length > soldVisibleCount && (
+                <div className="text-center mt-8">
+                  <Button onClick={() => setSoldVisibleCount(soldVisibleCount + 3)}>
+                    もっと見る
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
