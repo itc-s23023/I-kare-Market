@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Send, Check } from "lucide-react"
 import { useAuth } from "@/components/auth-provider"
 import { useChat } from "@/hooks/useChat"
-import { doc, getDoc, setDoc } from "firebase/firestore"
+import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore"
 import { db } from "@/lib/firebaseConfig"
 import Image from "next/image"
 import { notFound } from "next/navigation"
@@ -27,9 +27,10 @@ export default function ChatPage({ params }: { params: Promise<{ productId: stri
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const [chatMeta, setChatMeta] = useState<any | null>(null)
   useEffect(() => {
     if (!productId) return
-    const fetchProduct = async () => {
+    const fetchProductAndMeta = async () => {
       try {
         const docRef = doc(db, "products", productId)
         const docSnap = await getDoc(docRef)
@@ -48,7 +49,16 @@ export default function ChatPage({ params }: { params: Promise<{ productId: stri
             sellerRating: data.sellerRating || 0,
             createdAt: data.createdAt || "",
             status: data.status || "active",
+            is_trading: data.is_trading ?? false,
           })
+          // chat/meta取得
+          const metaRef = doc(db, "products", productId, "chat", "meta")
+          const metaSnap = await getDoc(metaRef)
+          if (metaSnap.exists()) {
+            setChatMeta(metaSnap.data())
+          } else {
+            setChatMeta(null)
+          }
         } else {
           setError("商品が見つかりません")
         }
@@ -58,7 +68,7 @@ export default function ChatPage({ params }: { params: Promise<{ productId: stri
         setLoading(false)
       }
     }
-    fetchProduct()
+    fetchProductAndMeta()
   }, [productId])
   type Message = {
     id: string
@@ -147,15 +157,35 @@ export default function ChatPage({ params }: { params: Promise<{ productId: stri
       </div>
     )
   }
-  if (error || !product) {
+  // アクセス制御: is_tradingがtrueのとき、出品者・購入者以外はアクセス不可（chat/meta参照）
+  if (
+    error ||
+    !product ||
+    (product.is_trading === true && user && (
+      !chatMeta ||
+      (user.uid !== (chatMeta.users?.seller?.id ?? "") && user.uid !== (chatMeta.users?.buyer?.id ?? ""))
+    ))
+  ) {
     notFound()
   }
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!newMessage.trim()) return
     if (!user) {
       // ログインしていない場合は送信を防ぐ（AuthProvider側でログイン導線を出す）
       return
+    }
+    // 商品のis_tradingをtrueに更新（購入者が最初のメッセージを送信したとき）
+    if (product && !product.is_trading && user.uid !== product.sellerId) {
+      try {
+        const productRef = doc(db, "products", productId)
+        await updateDoc(productRef, {
+          is_trading: true,
+        })
+        setProduct({ ...product, is_trading: true })
+      } catch (e) {
+        console.error("is_trading更新エラー", e)
+      }
     }
 
     // Firestore に送信
