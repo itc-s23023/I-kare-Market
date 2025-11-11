@@ -10,10 +10,10 @@ import { Badge } from "@/components/ui/badge"
 import { Send, Check } from "lucide-react"
 import { useAuth } from "@/components/auth-provider"
 import { useChat } from "@/hooks/useChat"
-import { doc, getDoc, setDoc } from "firebase/firestore"
+import { doc, getDoc, setDoc, updateDoc, onSnapshot, collection, addDoc, deleteDoc } from "firebase/firestore"
 import { db } from "@/lib/firebaseConfig"
 import Image from "next/image"
-import { notFound } from "next/navigation"
+import { notFound, useRouter } from "next/navigation"
 import { ProtectedRoute } from "@/components/protected-route"
 
 // 動的レンダリングを強制
@@ -23,13 +23,15 @@ export const dynamic = 'force-dynamic'
 
 export default function ChatPage({ params }: { params: Promise<{ productId: string }> }) {
   const { productId } = use(params)
+  const router = useRouter()
   const [product, setProduct] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const [chatMeta, setChatMeta] = useState<any | null>(null)
   useEffect(() => {
     if (!productId) return
-    const fetchProduct = async () => {
+    const fetchProductAndMeta = async () => {
       try {
         const docRef = doc(db, "products", productId)
         const docSnap = await getDoc(docRef)
@@ -48,7 +50,16 @@ export default function ChatPage({ params }: { params: Promise<{ productId: stri
             sellerRating: data.sellerRating || 0,
             createdAt: data.createdAt || "",
             status: data.status || "active",
+            is_trading: data.is_trading ?? false,
           })
+          // chat/meta取得（初回）
+          const metaRef = doc(db, "products", productId, "chat", "meta")
+          const metaSnap = await getDoc(metaRef)
+          if (metaSnap.exists()) {
+            setChatMeta(metaSnap.data())
+          } else {
+            setChatMeta(null)
+          }
         } else {
           setError("商品が見つかりません")
         }
@@ -58,7 +69,18 @@ export default function ChatPage({ params }: { params: Promise<{ productId: stri
         setLoading(false)
       }
     }
-    fetchProduct()
+    fetchProductAndMeta()
+  }, [productId])
+
+  // chat/meta を購読（同意状態のリアルタイム反映）
+  useEffect(() => {
+    if (!productId) return
+    const metaRef = doc(db, "products", productId, "chat", "meta")
+    const unsub = onSnapshot(metaRef, (snap) => {
+      if (snap.exists()) setChatMeta(snap.data())
+      else setChatMeta(null)
+    })
+    return () => unsub()
   }, [productId])
   type Message = {
     id: string
@@ -127,7 +149,13 @@ export default function ChatPage({ params }: { params: Promise<{ productId: stri
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [chatMessages])
   const [newMessage, setNewMessage] = useState("")
-  const [transactionStatus, setTransactionStatus] = useState<"negotiating" | "agreed" | "completed">("negotiating")
+  const isSeller = user ? user.uid === (product?.sellerId ?? "") : false
+  const buyerIdFromMeta = chatMeta?.users?.buyer?.id ?? null
+  const hasAgreed = isSeller ? Boolean(chatMeta?.sellerAgreed) : Boolean(chatMeta?.buyerAgreed)
+  const bothAgreed = Boolean(chatMeta?.sellerAgreed) && Boolean(chatMeta?.buyerAgreed)
+  const isBuyer = user ? !isSeller && user.uid === (buyerIdFromMeta ?? "") : false
+  const [rating, setRating] = useState<number | null>(null)
+  const [comment, setComment] = useState("")
 
   if (loading) {
     return (
@@ -147,15 +175,35 @@ export default function ChatPage({ params }: { params: Promise<{ productId: stri
       </div>
     )
   }
-  if (error || !product) {
+  // アクセス制御: is_tradingがtrueのとき、出品者・購入者以外はアクセス不可（chat/meta参照）
+  if (
+    error ||
+    !product ||
+    (product.is_trading === true && user && (
+      !chatMeta ||
+      (user.uid !== (chatMeta.users?.seller?.id ?? "") && user.uid !== (chatMeta.users?.buyer?.id ?? ""))
+    ))
+  ) {
     notFound()
   }
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!newMessage.trim()) return
     if (!user) {
       // ログインしていない場合は送信を防ぐ（AuthProvider側でログイン導線を出す）
       return
+    }
+    // 商品のis_tradingをtrueに更新（購入者が最初のメッセージを送信したとき）
+    if (product && !product.is_trading && user.uid !== product.sellerId) {
+      try {
+        const productRef = doc(db, "products", productId)
+        await updateDoc(productRef, {
+          is_trading: true,
+        })
+        setProduct({ ...product, is_trading: true })
+      } catch (e) {
+        console.error("is_trading更新エラー", e)
+      }
     }
 
     // Firestore に送信
@@ -172,12 +220,59 @@ export default function ChatPage({ params }: { params: Promise<{ productId: stri
       })
   }
 
-  const handleAgree = () => {
-    setTransactionStatus("agreed")
+  // 双方同意のボタン押下時（自分の同意のみを記録）
+  const handleAgree = async () => {
+    if (!user || !productId) return
+    try {
+      const metaRef = doc(db, "products", productId, "chat", "meta")
+      if (isSeller) {
+        await setDoc(metaRef, { sellerAgreed: true }, { merge: true })
+      } else {
+        await setDoc(metaRef, { buyerAgreed: true }, { merge: true })
+      }
+    } catch (e) {
+      console.error("同意の更新に失敗しました", e)
+    }
   }
 
-  const handleComplete = () => {
-    setTransactionStatus("completed")
+  // 購入者の評価送信で取引完了 -> 出品者側のusers配下に保存し、その後商品を削除
+  const handleSubmitEvaluation = async () => {
+    if (!user || !product || !isBuyer) return
+    if (!rating) return // スコア必須
+    try {
+      const evalsCol = collection(db, "users", product.sellerId, "evaluations")
+      await addDoc(evalsCol, {
+        user: user.displayName || user.email || user.uid,
+        userimageURL: user.photoURL || "/placeholder-user.jpg",
+        content: comment || "",
+        score: rating,
+      })
+
+      // users/{sellerId} の評価集約値(evalution)を再計算し反映
+      // 新値 = (新しいscore + 既存evalution) / 2。既存が未定義の場合は新しいscoreをそのまま採用。
+      try {
+        const sellerRef = doc(db, "users", product.sellerId)
+        const sellerSnap = await getDoc(sellerRef)
+        if (sellerSnap.exists()) {
+          const data = sellerSnap.data() as { evalution?: unknown }
+          const prev = typeof data.evalution === "number" ? data.evalution : null
+          const next = prev == null ? rating : (rating + prev) / 2
+          await updateDoc(sellerRef, { evalution: next })
+        }
+      } catch (e) {
+        console.error("ユーザー評価の再計算に失敗しました", e)
+        // 集約更新に失敗しても、評価ドキュメント自体は保存できていれば続行
+      }
+
+      // 商品削除（最小限の変更：ドキュメントのみ削除）
+      const productRef = doc(db, "products", productId)
+      await deleteDoc(productRef)
+
+      // 終了後はプロフィールへ遷移
+      router.push("/profile")
+    } catch (e) {
+      console.error("評価の送信または商品削除に失敗しました", e)
+    }
   }
 
   return (
@@ -202,12 +297,11 @@ export default function ChatPage({ params }: { params: Promise<{ productId: stri
                   <h2 className="font-semibold text-lg mb-1 truncate">{product.title}</h2>
                   <p className="text-2xl font-bold text-primary">¥{product.price.toLocaleString()}</p>
                 </div>
-                {transactionStatus === "agreed" && (
+                {bothAgreed && (
                   <Badge variant="secondary" className="shrink-0">
                     取引合意済み
                   </Badge>
                 )}
-                {transactionStatus === "completed" && <Badge className="shrink-0">取引完了</Badge>}
               </div>
             </CardContent>
           </Card>
@@ -312,7 +406,7 @@ export default function ChatPage({ params }: { params: Promise<{ productId: stri
                 <div ref={messagesEndRef} />
               </div>
 
-              {transactionStatus === "negotiating" && (
+              {!bothAgreed && (
                 <div className="flex gap-2">
                   <Input
                     placeholder="メッセージを入力..."
@@ -332,53 +426,63 @@ export default function ChatPage({ params }: { params: Promise<{ productId: stri
               )}
             </CardContent>
           </Card>
-
-          {transactionStatus === "negotiating" && (
+          {!bothAgreed && (
             <Card>
               <CardContent className="p-6">
                 <h3 className="font-semibold mb-3">取引の進行</h3>
                 <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
-                  取引内容について双方が合意したら、「取引に合意する」ボタンを押してください。
+                  取引内容について双方が合意したら、「同意する」ボタンを押してください。双方の同意が確認されると評価ステップへ進みます。
                 </p>
-                <Button onClick={handleAgree} className="w-full">
-                  <Check className="h-4 w-4 mr-2" />
-                  取引に合意する
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-
-          {transactionStatus === "agreed" && (
-            <Card>
-              <CardContent className="p-6">
-                <h3 className="font-semibold mb-3">商品の受け取り</h3>
-                <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
-                  商品を受け取ったら、「取引を完了する」ボタンを押して、出品者を評価してください。
-                </p>
-                <Button onClick={handleComplete} className="w-full">
-                  <Check className="h-4 w-4 mr-2" />
-                  取引を完了する
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-
-          {transactionStatus === "completed" && (
-            <Card>
-              <CardContent className="p-6">
-                <h3 className="font-semibold mb-3">出品者を評価する</h3>
-                <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
-                  取引はいかがでしたか？出品者を評価してください。
-                </p>
-                <div className="flex gap-2 mb-4">
-                  {[1, 2, 3, 4, 5].map((rating) => (
-                    <Button key={rating} variant="outline" size="lg" className="flex-1 bg-transparent">
-                      {rating}
-                    </Button>
-                  ))}
+                <div className="flex flex-col gap-2">
+                  <Button onClick={handleAgree} disabled={hasAgreed} className="w-full">
+                    <Check className="h-4 w-4 mr-2" />
+                    {hasAgreed ? "同意済み（相手の同意待ち）" : "同意する"}
+                  </Button>
                 </div>
-                <Input placeholder="コメントを入力（任意）" className="mb-4" />
-                <Button className="w-full">評価を送信</Button>
+              </CardContent>
+            </Card>
+          )}
+          {bothAgreed && (
+            <Card>
+              <CardContent className="p-6">
+                {isBuyer ? (
+                  <>
+                    <h3 className="font-semibold mb-3">出品者を評価する</h3>
+                    <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
+                      商品の受け取り後、取引相手（出品者）を評価してください。評価の送信をもって取引は完了します。
+                    </p>
+                    <div className="flex gap-2 mb-4">
+                      {[1, 2, 3, 4, 5].map((r) => (
+                        <Button
+                          key={r}
+                          type="button"
+                          variant={rating === r ? "default" : "outline"}
+                          size="lg"
+                          className="flex-1"
+                          onClick={() => setRating(r)}
+                        >
+                          {r}
+                        </Button>
+                      ))}
+                    </div>
+                    <Input
+                      placeholder="コメントを入力（任意）"
+                      className="mb-4"
+                      value={comment}
+                      onChange={(e) => setComment(e.target.value)}
+                    />
+                    <Button className="w-full" onClick={handleSubmitEvaluation} disabled={!rating}>
+                      評価を送信して取引を完了
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <h3 className="font-semibold mb-3">評価待ち</h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      双方の同意が完了しました。購入者の評価送信をお待ちください。
+                    </p>
+                  </>
+                )}
               </CardContent>
             </Card>
           )}
