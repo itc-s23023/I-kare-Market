@@ -248,6 +248,22 @@ export default function ChatPage({ params }: { params: Promise<{ productId: stri
         score: rating,
       })
 
+      // users/{sellerId} の評価集約値(evalution)を再計算し反映
+      // 新値 = (新しいscore + 既存evalution) / 2。既存が未定義の場合は新しいscoreをそのまま採用。
+      try {
+        const sellerRef = doc(db, "users", product.sellerId)
+        const sellerSnap = await getDoc(sellerRef)
+        if (sellerSnap.exists()) {
+          const data = sellerSnap.data() as { evalution?: unknown }
+          const prev = typeof data.evalution === "number" ? data.evalution : null
+          const next = prev == null ? rating : (rating + prev) / 2
+          await updateDoc(sellerRef, { evalution: next })
+        }
+      } catch (e) {
+        console.error("ユーザー評価の再計算に失敗しました", e)
+        // 集約更新に失敗しても、評価ドキュメント自体は保存できていれば続行
+      }
+
       // 商品削除（最小限の変更：ドキュメントのみ削除）
       const productRef = doc(db, "products", productId)
       await deleteDoc(productRef)
