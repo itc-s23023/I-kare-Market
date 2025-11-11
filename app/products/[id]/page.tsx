@@ -14,6 +14,7 @@ import Link from "next/link"
 import { doc, getDoc } from "firebase/firestore"
 import { db } from "@/lib/firebaseConfig"
 import { useEffect } from "react"
+import { useState as useReactState } from "react"
 
 interface Product {
   id: string
@@ -40,6 +41,8 @@ const conditionLabels = {
 
 
 export default function ProductDetailPage() {
+  // chatMeta: 取引中ユーザー判定用
+  const [chatMeta, setChatMeta] = useReactState<any | null>(null)
   const params = useParams()
   const router = useRouter()
   const { user } = useAuth()
@@ -57,14 +60,11 @@ export default function ProductDetailPage() {
     const fetchProduct = async () => {
       try {
         console.log("🔄 商品詳細取得開始:", productId)
-        
         const docRef = doc(db, "products", productId)
         const docSnap = await getDoc(docRef)
-        
         if (docSnap.exists()) {
           const data = docSnap.data()
           console.log("📄 取得した商品詳細:", data)
-          
           const productData: Product = {
             id: docSnap.id,
             productname: String(data.productname || "商品名なし"),
@@ -80,8 +80,19 @@ export default function ProductDetailPage() {
             sellerName: String(data.sellerName || "匿名ユーザー"),
             sellerEmail: String(data.sellerEmail || "")
           }
-          
           setProduct(productData)
+          // chat/meta取得（is_trading時のみ）
+          if (data.is_trading) {
+            const metaRef = doc(db, "products", productId, "chat", "meta")
+            const metaSnap = await getDoc(metaRef)
+            if (metaSnap.exists()) {
+              setChatMeta(metaSnap.data())
+            } else {
+              setChatMeta(null)
+            }
+          } else {
+            setChatMeta(null)
+          }
           console.log("✅ 商品詳細取得完了")
         } else {
           console.log("❌ 商品が見つかりません")
@@ -94,7 +105,6 @@ export default function ProductDetailPage() {
         setLoading(false)
       }
     }
-
     fetchProduct()
   }, [productId])
 
@@ -138,6 +148,7 @@ export default function ProductDetailPage() {
 
   const isOwner = user?.uid === product.userid
   const isSold = product.status === "sold"
+  const isTrading = product.is_trading && !isSold
   const displayImages = product.image_urls.length > 0 ? product.image_urls : [product.image_url]
 
   const handleLikeClick = () => {
@@ -159,17 +170,33 @@ export default function ProductDetailPage() {
     alert("購入機能は準備中です")
   }
 
+  // チャットボタンの権限判定
+  let canChat = true
+  let chatButtonTooltip = ""
+  if (isOwner) {
+    canChat = false
+    chatButtonTooltip = "自分の商品とはチャットできません"
+  } else if (isSold) {
+    canChat = false
+    chatButtonTooltip = "この商品は売却済みです"
+  } else if (isTrading && user) {
+    // 取引中の場合、チャット権限は出品者またはchat/metaのbuyerのみ
+    const buyerId = chatMeta?.users?.buyer?.id
+    if (user.uid !== product.userid && user.uid !== buyerId) {
+      canChat = false
+      chatButtonTooltip = "現在取引中のためチャットできません"
+    }
+  }
+
   const handleChat = () => {
     if (!user) {
       router.push("/login")
       return
     }
-
-    if (isOwner) {
-      alert("自分の商品とはチャットできません")
+    if (!canChat) {
+      alert(chatButtonTooltip)
       return
     }
-
     // チャットページにリダイレクト
     router.push(`/chat/${productId}`)
   }
@@ -276,8 +303,8 @@ export default function ProductDetailPage() {
                 {/* 商品ステータス */}
                 <div className="flex items-center gap-2 mb-6">
                   <Package className="h-5 w-5 text-muted-foreground" />
-                  <span className={`text-lg font-medium ${isSold ? "text-destructive" : "text-green-600"}`}>
-                    {isSold ? "売却済み" : "販売中"}
+                  <span className={`text-lg font-medium ${isSold ? "text-destructive" : isTrading ? "text-blue-600" : "text-green-600"}`}>
+                    {isSold ? "売却済み" : isTrading ? "取引中" : "販売中"}
                   </span>
                 </div>
               </div>
@@ -297,10 +324,12 @@ export default function ProductDetailPage() {
                       <div className="space-y-3">
                         <Separator />
                         <div className="flex gap-2">
-                          <Button 
+                          <Button
                             onClick={handleChat}
                             className="flex-1 bg-black text-white hover:bg-gray-800"
                             size="lg"
+                            disabled={!canChat}
+                            title={chatButtonTooltip}
                           >
                             <MessageCircle className="h-5 w-5 mr-2 text-white" />
                             チャット
