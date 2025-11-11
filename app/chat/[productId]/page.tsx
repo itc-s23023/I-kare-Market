@@ -249,14 +249,14 @@ export default function ChatPage({ params }: { params: Promise<{ productId: stri
       })
 
       // users/{sellerId} の評価集約値(evalution)を再計算し反映
-      // 新値 = (新しいscore + 既存evalution) / 2。既存が未定義の場合は新しいscoreをそのまま採用。
+      // 新値 = (新しいscore + 既存evalution) / 2。既存が未定義または0の場合は新しいscoreをそのまま採用。
       try {
         const sellerRef = doc(db, "users", product.sellerId)
         const sellerSnap = await getDoc(sellerRef)
         if (sellerSnap.exists()) {
           const data = sellerSnap.data() as { evalution?: unknown }
           const prev = typeof data.evalution === "number" ? data.evalution : null
-          const next = prev == null ? rating : (rating + prev) / 2
+          const next = (prev == null || prev === 0) ? rating : (rating + prev) / 2
           await updateDoc(sellerRef, { evalution: next })
         }
       } catch (e) {
