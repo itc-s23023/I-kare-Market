@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Send, Check } from "lucide-react"
 import { useAuth } from "@/components/auth-provider"
 import { useChat } from "@/hooks/useChat"
-import { doc, getDoc, setDoc, updateDoc, onSnapshot, collection, addDoc, deleteDoc } from "firebase/firestore"
+import { doc, getDoc, setDoc, updateDoc, onSnapshot, collection, addDoc, deleteDoc, getDocs } from "firebase/firestore"
 import { db } from "@/lib/firebaseConfig"
 import Image from "next/image"
 import { notFound, useRouter } from "next/navigation"
@@ -279,6 +279,17 @@ export default function ChatPage({ params }: { params: Promise<{ productId: stri
       } catch (e) {
         console.error("❌ purchases への購入履歴保存に失敗", e)
         // 保存失敗しても評価は完了しているため処理継続（必要ならリトライ導線を検討）
+      }
+
+      // サブコレクション(chat)を削除してから商品ドキュメントを削除
+      try {
+        const chatCol = collection(db, "products", productId, "chat")
+        const chatSnap = await getDocs(chatCol)
+        await Promise.all(chatSnap.docs.map((d) => deleteDoc(d.ref)))
+        console.log("🧹 サブコレクション chat を削除しました", chatSnap.size)
+      } catch (e) {
+        console.error("❌ サブコレクション chat の削除に失敗しました", e)
+        // 失敗しても最終的に商品は削除するが、ストレージクリーンアップのためにログを残す
       }
 
       // 商品削除（最小限の変更：ドキュメントのみ削除）
