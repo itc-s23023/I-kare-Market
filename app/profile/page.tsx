@@ -203,17 +203,15 @@ export default function ProfilePage() {
                           style={{ boxShadow: '0 1px 0 0 #e5e7eb' }}
                         >
                           <td className="px-6 py-4 font-semibold">
-                            {purchase.productName || purchase.product?.productname || "—"}
+                            {purchase.productName || "—"}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             {purchase.purchaseDate
                               ? new Date(purchase.purchaseDate).toLocaleDateString("ja-JP", { year: "numeric", month: "2-digit", day: "2-digit" })
-                              : purchase.createdAt
-                                ? new Date(purchase.createdAt).toLocaleDateString("ja-JP")
-                                : "—"}
+                              : "—"}
                           </td>
                           <td className="px-6 py-4 text-right font-mono text-base text-green-700">
-                            ¥{(purchase.price ?? purchase.product?.price ?? 0).toLocaleString()}
+                            ¥{(purchase.price ?? 0).toLocaleString()}
                           </td>
                           <td className="px-6 py-4 flex items-center gap-2">
                             <div className="flex items-center gap-2">

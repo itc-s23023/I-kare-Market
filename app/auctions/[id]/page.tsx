@@ -142,7 +142,7 @@ export default function AuctionDetailPage() {
       setBidSuccess(result.message)
 
       setTimeout(() => {
-        router.push("/auctions")
+          router.push(`/chat/${auctionId}?type=auction`)
       }, 2000)
     } catch (error: any) {
       setBidError(error.message)
