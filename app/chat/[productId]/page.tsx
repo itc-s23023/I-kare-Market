@@ -1,6 +1,6 @@
 "use client"
 
-import { use, useState, useRef, useEffect } from "react"
+import { use, useState, useRef, useEffect, Suspense } from "react"
 import { Header } from "@/components/header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,7 +13,7 @@ import { useChat } from "@/hooks/useChat"
 import { doc, getDoc, setDoc, updateDoc, onSnapshot, collection, addDoc, deleteDoc, getDocs } from "firebase/firestore"
 import { db } from "@/lib/firebaseConfig"
 import Image from "next/image"
-import { notFound, useRouter } from "next/navigation"
+import { notFound, useRouter, useSearchParams } from "next/navigation"
 import { ProtectedRoute } from "@/components/protected-route"
 
 // 動的レンダリングを強制
@@ -21,9 +21,13 @@ export const dynamic = 'force-dynamic'
 
 
 
-export default function ChatPage({ params }: { params: Promise<{ productId: string }> }) {
+function ChatPageContent({ params }: { params: Promise<{ productId: string }> }) {
   const { productId } = use(params)
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const itemType = searchParams.get('type') || 'product' // 'product' or 'auction'
+  const collectionName = itemType === 'auction' ? 'auctions' : 'products'
+  
   const [product, setProduct] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -33,19 +37,20 @@ export default function ChatPage({ params }: { params: Promise<{ productId: stri
     if (!productId) return
     const fetchProductAndMeta = async () => {
       try {
-        const docRef = doc(db, "products", productId)
+        const docRef = doc(db, collectionName, productId)
         const docSnap = await getDoc(docRef)
         if (docSnap.exists()) {
           const data = docSnap.data()
           setProduct({
             id: docSnap.id,
-            title: data.productname || "商品名なし",
-            price: data.price || 0,
-            description: data.content || "",
+            title: data.productname || data.title || "商品名なし",
+            // 価格: 通常商品のprice / オークションは finalPrice > currentBid > startingPrice の優先順
+            price: (data.finalPrice || data.currentBid || data.startingPrice || data.price || 0),
+            description: data.content || data.description || "",
             condition: data.condition || "",
-            images: Array.isArray(data.image_urls) ? data.image_urls : [data.image_url || "/placeholder.jpg"],
-            sellerId: data.userid || "",
-            sellerName: data.sellerName || "匿名ユーザー",
+            images: Array.isArray(data.image_urls) ? data.image_urls : Array.isArray(data.images) ? data.images : [data.image_url || "/placeholder.jpg"],
+            sellerId: data.userid || data.sellerId || "",
+            sellerName: data.sellerName || data.username || "匿名ユーザー",
             sellerImage: data.sellerImage || "/placeholder-user.jpg",
             sellerRating: data.sellerRating || 0,
             createdAt: data.createdAt || "",
@@ -53,7 +58,7 @@ export default function ChatPage({ params }: { params: Promise<{ productId: stri
             is_trading: data.is_trading ?? false,
           })
           // chat/meta取得（初回）
-          const metaRef = doc(db, "products", productId, "chat", "meta")
+          const metaRef = doc(db, collectionName, productId, "chat", "meta")
           const metaSnap = await getDoc(metaRef)
           if (metaSnap.exists()) {
             setChatMeta(metaSnap.data())
@@ -70,18 +75,18 @@ export default function ChatPage({ params }: { params: Promise<{ productId: stri
       }
     }
     fetchProductAndMeta()
-  }, [productId])
+  }, [productId, collectionName])
 
   // chat/meta を購読（同意状態のリアルタイム反映）
   useEffect(() => {
     if (!productId) return
-    const metaRef = doc(db, "products", productId, "chat", "meta")
+    const metaRef = doc(db, collectionName, productId, "chat", "meta")
     const unsub = onSnapshot(metaRef, (snap) => {
       if (snap.exists()) setChatMeta(snap.data())
       else setChatMeta(null)
     })
     return () => unsub()
-  }, [productId])
+  }, [productId, collectionName])
   type Message = {
     id: string
     senderId: string
@@ -93,11 +98,11 @@ export default function ChatPage({ params }: { params: Promise<{ productId: stri
   // auth
   const { user } = useAuth()
 
-  // useChat: products/{productId}/chat サブコレクションを購読
-  const { messages: chatMessages, loading: chatLoading, error: chatError, sendMessage, chatUsers } = useChat(
-    "products",
-    productId
-  )
+    // useChat: products/{productId}/chat または auctions/{auctionId}/chat サブコレクションを購読
+    const { messages: chatMessages, loading: chatLoading, error: chatError, sendMessage, chatUsers } = useChat(
+      itemType === 'auction' ? 'auctions' : 'products',
+      productId
+    )
 
   // chat meta(users) を作成：購入者がチャットを開いたときにbuyer情報を保存する
   useEffect(() => {
@@ -107,7 +112,7 @@ export default function ChatPage({ params }: { params: Promise<{ productId: stri
 
     const writeMeta = async () => {
       try {
-        const metaRef = doc(db, "products", productId, "chat", "meta")
+          const metaRef = doc(db, collectionName, productId, "chat", "meta")
         await setDoc(
           metaRef,
           {
@@ -130,7 +135,7 @@ export default function ChatPage({ params }: { params: Promise<{ productId: stri
     }
 
     writeMeta()
-  }, [product, user, productId])
+    }, [product, user, productId, collectionName])
   // メッセージを日付ごとにグループ化する関数
   function groupMessagesByDate(messages: Message[]): { [date: string]: Message[] } {
     const groups: { [date: string]: Message[] } = {}
@@ -193,8 +198,8 @@ export default function ChatPage({ params }: { params: Promise<{ productId: stri
       // ログインしていない場合は送信を防ぐ（AuthProvider側でログイン導線を出す）
       return
     }
-    // 商品のis_tradingをtrueに更新（購入者が最初のメッセージを送信したとき）
-    if (product && !product.is_trading && user.uid !== product.sellerId) {
+      // 商品のis_tradingをtrueに更新（購入者が最初のメッセージを送信したとき）※productsのみ
+      if (itemType === 'product' && product && !product.is_trading && user.uid !== product.sellerId) {
       try {
         const productRef = doc(db, "products", productId)
         await updateDoc(productRef, {
@@ -224,7 +229,7 @@ export default function ChatPage({ params }: { params: Promise<{ productId: stri
   const handleAgree = async () => {
     if (!user || !productId) return
     try {
-      const metaRef = doc(db, "products", productId, "chat", "meta")
+        const metaRef = doc(db, collectionName, productId, "chat", "meta")
       if (isSeller) {
         await setDoc(metaRef, { sellerAgreed: true }, { merge: true })
       } else {
@@ -239,17 +244,24 @@ export default function ChatPage({ params }: { params: Promise<{ productId: stri
   const handleSubmitEvaluation = async () => {
     if (!user || !product || !isBuyer) return
     if (!rating) return // スコア必須
+    if (!product.sellerId) {
+      console.error("sellerIdが取得できないため評価を保存できません")
+      return
+    }
     try {
+      // 評価コレクション（ユーザーサブコレクション）
       const evalsCol = collection(db, "users", product.sellerId, "evaluations")
       await addDoc(evalsCol, {
         user: user.displayName || user.email || user.uid,
         userimageURL: user.photoURL || "/placeholder-user.jpg",
         content: comment || "",
         score: rating,
+        createdAt: new Date().toISOString(),
+        itemType,
+        itemId: product.id
       })
 
       // users/{sellerId} の評価集約値(evalution)を再計算し反映
-      // 新値 = (新しいscore + 既存evalution) / 2。既存が未定義または0の場合は新しいscoreをそのまま採用。
       try {
         const sellerRef = doc(db, "users", product.sellerId)
         const sellerSnap = await getDoc(sellerRef)
@@ -261,10 +273,9 @@ export default function ChatPage({ params }: { params: Promise<{ productId: stri
         }
       } catch (e) {
         console.error("ユーザー評価の再計算に失敗しました", e)
-        // 集約更新に失敗しても、評価ドキュメント自体は保存できていれば続行
       }
 
-      // purchases コレクションへ最小スキーマで保存（商品削除前）
+      // 購入履歴保存（最終価格優先）
       try {
         const purchaseRef = doc(collection(db, "users", user.uid, "purchases"))
         await setDoc(purchaseRef, {
@@ -273,30 +284,42 @@ export default function ChatPage({ params }: { params: Promise<{ productId: stri
           price: product.price || 0,
           sellerId: product.sellerId || "",
           sellerName: product.sellerName || "匿名ユーザー",
-          sellerAvatar: product.sellerImage || "/seller-avatar.png"
+          sellerAvatar: product.sellerImage || "/seller-avatar.png",
+          itemType,
+          itemId: product.id
         })
         console.log("✅ users/" + user.uid + "/purchases へ購入履歴保存完了")
       } catch (e) {
         console.error("❌ purchases への購入履歴保存に失敗", e)
-        // 保存失敗しても評価は完了しているため処理継続（必要ならリトライ導線を検討）
       }
 
-      // サブコレクション(chat)を削除してから商品ドキュメントを削除
+      // サブコレクション(chat)削除
       try {
-        const chatCol = collection(db, "products", productId, "chat")
+        const chatCol = collection(db, collectionName, productId, "chat")
         const chatSnap = await getDocs(chatCol)
         await Promise.all(chatSnap.docs.map((d) => deleteDoc(d.ref)))
         console.log("🧹 サブコレクション chat を削除しました", chatSnap.size)
       } catch (e) {
         console.error("❌ サブコレクション chat の削除に失敗しました", e)
-        // 失敗しても最終的に商品は削除するが、ストレージクリーンアップのためにログを残す
       }
 
-      // 商品削除（最小限の変更：ドキュメントのみ削除）
-      const productRef = doc(db, "products", productId)
+      // 商品/オークション削除
+      const productRef = doc(db, collectionName, productId)
       await deleteDoc(productRef)
 
-      // 終了後はプロフィールへ遷移
+      // オークション: 入札履歴削除
+      if (itemType === 'auction') {
+        try {
+          const biddingQuery = collection(db, "bidding_history")
+          const biddingSnapshot = await getDocs(biddingQuery)
+          const bidsToDelete = biddingSnapshot.docs.filter(doc => doc.data().auction_productid === productId)
+          await Promise.all(bidsToDelete.map(doc => deleteDoc(doc.ref)))
+          console.log(`🧹 入札履歴を削除しました: ${bidsToDelete.length}件`)
+        } catch (e) {
+          console.error("❌ 入札履歴の削除に失敗しました", e)
+        }
+      }
+
       router.push("/profile")
     } catch (e) {
       console.error("評価の送信または商品削除に失敗しました", e)
@@ -520,3 +543,26 @@ export default function ChatPage({ params }: { params: Promise<{ productId: stri
     </ProtectedRoute>
   )
 }
+
+  export default function ChatPage({ params }: { params: Promise<{ productId: string }> }) {
+    return (
+      <Suspense fallback={
+        <div className="min-h-screen bg-background">
+          <Header />
+          <main className="container mx-auto px-4 py-8">
+            <div className="text-center py-16">
+              <div className="inline-flex items-center px-4 py-2 font-semibold leading-6 text-sm shadow rounded-md text-white bg-blue-500">
+                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                読み込み中...
+              </div>
+            </div>
+          </main>
+        </div>
+      }>
+        <ChatPageContent params={params} />
+      </Suspense>
+    )
+  }
