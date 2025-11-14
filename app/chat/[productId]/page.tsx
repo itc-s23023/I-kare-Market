@@ -235,7 +235,7 @@ export default function ChatPage({ params }: { params: Promise<{ productId: stri
     }
   }
 
-  // 購入者の評価送信で取引完了 -> 出品者側のusers配下に保存し、その後商品を削除
+  // 購入者の評価送信で取引完了 -> 出品者評価保存後に purchases へ最小スキーマで購入履歴を保存し、その後商品を削除
   const handleSubmitEvaluation = async () => {
     if (!user || !product || !isBuyer) return
     if (!rating) return // スコア必須
@@ -262,6 +262,23 @@ export default function ChatPage({ params }: { params: Promise<{ productId: stri
       } catch (e) {
         console.error("ユーザー評価の再計算に失敗しました", e)
         // 集約更新に失敗しても、評価ドキュメント自体は保存できていれば続行
+      }
+
+      // purchases コレクションへ最小スキーマで保存（商品削除前）
+      try {
+        const purchaseRef = doc(collection(db, "users", user.uid, "purchases"))
+        await setDoc(purchaseRef, {
+          productName: product.title || "商品名なし",
+          purchaseDate: new Date().toISOString(),
+          price: product.price || 0,
+          sellerId: product.sellerId || "",
+          sellerName: product.sellerName || "匿名ユーザー",
+          sellerAvatar: product.sellerImage || "/seller-avatar.png"
+        })
+        console.log("✅ users/" + user.uid + "/purchases へ購入履歴保存完了")
+      } catch (e) {
+        console.error("❌ purchases への購入履歴保存に失敗", e)
+        // 保存失敗しても評価は完了しているため処理継続（必要ならリトライ導線を検討）
       }
 
       // 商品削除（最小限の変更：ドキュメントのみ削除）

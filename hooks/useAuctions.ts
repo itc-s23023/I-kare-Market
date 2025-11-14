@@ -725,18 +725,16 @@ export function useAuctionManagement() {
         updatedAt: new Date().toISOString()
       })
 
-      // 2. 購入履歴を追加（今後の取引管理用）
-      const purchaseRef = doc(collection(db, "purchases"))
+      // 2. 購入履歴を追加（ユーザーサブコレクション users/{buyerId}/purchases に保存）
+      // 保存フィールド: productName, purchaseDate, price, sellerId, sellerName, sellerAvatar
+      const purchaseRef = doc(collection(db, "users", user.uid, "purchases"))
       batch.set(purchaseRef, {
-        auctionId: auctionId,
-        productTitle: auctionData.title,
-        sellerId: auctionData.sellerId,
-        sellerName: auctionData.sellerName,
-        buyerId: user.uid,
-        buyerName: user.displayName || "匿名ユーザー",
-        purchasePrice: auctionData.buyNowPrice,
-        purchaseTime: new Date().toISOString(),
-        status: "completed"
+        productName: auctionData.title || "商品名なし",
+        purchaseDate: new Date().toISOString(),
+        price: auctionData.buyNowPrice,
+        sellerId: auctionData.sellerId || "",
+        sellerName: auctionData.sellerName || "匿名ユーザー",
+        sellerAvatar: (auctionData.sellerImage as string) || "/seller-avatar.png"
       })
 
       // 3. 入札履歴を削除
