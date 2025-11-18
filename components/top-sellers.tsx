@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Star, TrendingUp } from "lucide-react"
 import { useEffect, useState } from "react"
-import { collection, getDocs, query, orderBy, limit } from "firebase/firestore"
+import { collection, getDocs } from "firebase/firestore"
 import { db } from "@/lib/firebaseConfig"
 
 interface SellerRanking {
@@ -57,10 +57,10 @@ export function TopSellers() {
         setLoading(true)
         setError(null)
 
-        // Firestoreからユーザーデータを取得（Salesでソート、上位5件）
+        // Firestoreから全ユーザーデータを取得
+        // Sales: 取引完了時に商品価格が加算される総売上額
         const usersRef = collection(db, "users")
-        const q = query(usersRef, orderBy("Sales", "desc"), limit(5))
-        const querySnapshot = await getDocs(q)
+        const querySnapshot = await getDocs(usersRef)
 
         const sellers: SellerRanking[] = querySnapshot.docs.map((doc) => {
           const data = doc.data()
@@ -75,7 +75,12 @@ export function TopSellers() {
           }
         })
 
-        setTopSellers(sellers)
+        // クライアント側でSalesの降順にソートして上位5件を取得
+        const topFive = sellers
+          .sort((a, b) => b.totalSales - a.totalSales)
+          .slice(0, 5)
+
+        setTopSellers(topFive)
       } catch (err) {
         console.error("❌ 売上ランキング取得エラー:", err)
         setError("ランキングデータの取得に失敗しました")
