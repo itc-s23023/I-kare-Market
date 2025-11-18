@@ -38,17 +38,6 @@ export function useEvaluations() {
         const basicQuery = await getDocs(evaluationsRef)
         console.log(`📄 基本クエリ結果: ${basicQuery.size}件のドキュメントが見つかりました`)
         
-        // 各ドキュメントの詳細をログ出力
-        basicQuery.forEach((doc, index) => {
-          const data = doc.data()
-          console.log(`📝 評価${index + 1}:`, {
-            id: doc.id,
-            data: data,
-            createdAt: data.createdAt,
-            createdAtType: typeof data.createdAt
-          })
-        })
-        
         const evaluationsData: Evaluation[] = []
         
         basicQuery.forEach((doc) => {
@@ -65,7 +54,16 @@ export function useEvaluations() {
           evaluationsData.push(evaluation)
         })
 
-        console.log(`✅ 評価一覧取得完了: ${evaluationsData.length}件`)
+        // クライアント側で最新順にソート
+        evaluationsData.sort((a, b) => {
+          const dateA = new Date(a.createdAt || "")
+          const dateB = new Date(b.createdAt || "")
+          return dateB.getTime() - dateA.getTime() // 最新順（降順）
+        })
+
+        console.log(`✅ 評価一覧取得完了: ${evaluationsData.length}件（最新順にソート済み）`)
+        console.log("📋 ソート後の評価配列:", evaluationsData)
+
         setEvaluations(evaluationsData)
         setError(null)
       } catch (error: any) {
