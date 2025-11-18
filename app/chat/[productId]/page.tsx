@@ -230,6 +230,7 @@ function ChatPageContent({ params }: { params: Promise<{ productId: string }> })
     if (!user || !productId) return
     try {
       const metaRef = doc(db, collectionName, productId, "chat", "meta")
+
       if (isSeller) {
         await setDoc(metaRef, { sellerAgreed: true }, { merge: true })
       } else {
@@ -349,7 +350,6 @@ function ChatPageContent({ params }: { params: Promise<{ productId: string }> })
       } catch (e) {
         console.error("❌ 売り手の総売上更新に失敗", e)
       }
-
       // サブコレクション(chat)削除
       try {
         const chatCol = collection(db, collectionName, productId, "chat")
