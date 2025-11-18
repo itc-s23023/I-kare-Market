@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Send, Check } from "lucide-react"
 import { useAuth } from "@/components/auth-provider"
 import { useChat } from "@/hooks/useChat"
-import { doc, getDoc, setDoc, updateDoc, onSnapshot, collection, addDoc, deleteDoc, getDocs } from "firebase/firestore"
+import { doc, getDoc, setDoc, updateDoc, onSnapshot, collection, addDoc, deleteDoc, getDocs, query, where } from "firebase/firestore"
 import { db } from "@/lib/firebaseConfig"
 import Image from "next/image"
 import { notFound, useRouter, useSearchParams } from "next/navigation"
@@ -260,6 +260,18 @@ function ChatPageContent({ params }: { params: Promise<{ productId: string }> })
         itemType,
         itemId: product.id
       })
+
+      // この商品/オークションに関連する通知を削除
+      try {
+        const notificationsQuery = itemType === 'auction'
+          ? query(collection(db, "notifications"), where("auctionId", "==", productId))
+          : query(collection(db, "notifications"), where("productId", "==", productId))
+        const notificationsSnap = await getDocs(notificationsQuery)
+        await Promise.all(notificationsSnap.docs.map(doc => deleteDoc(doc.ref)))
+        console.log(`🧹 関連通知を削除しました: ${notificationsSnap.size}件`)
+      } catch (e) {
+        console.error("❌ 関連通知の削除に失敗しました", e)
+      }
 
       // users/{sellerId} の評価集約値(evalution)を再計算し反映
       try {

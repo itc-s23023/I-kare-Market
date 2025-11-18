@@ -41,6 +41,7 @@ const sendNotification = async (notificationData: {
   auctionId?: string
   sellerId?: string
   buyerId?: string
+  itemType?: "product" | "auction"
 }) => {
   try {
     await addDoc(collection(db, "notifications"), {
@@ -50,6 +51,66 @@ const sendNotification = async (notificationData: {
     })
   } catch (error) {
     console.error("通知送信エラー:", error)
+  }
+}
+
+// オークション終了時のチャット初期化（重複防止付き）
+async function createInitialAuctionChatIfNeeded(params: {
+  auctionId: string
+  sellerId: string
+  sellerName: string
+  sellerImage?: string
+  buyerId: string
+  buyerName: string
+  buyerImage?: string
+  finalPrice?: number
+}) {
+  const {
+    auctionId,
+    sellerId,
+    sellerName,
+    sellerImage = "/placeholder-user.jpg",
+    buyerId,
+    buyerName,
+    buyerImage = "/placeholder-user.jpg",
+    finalPrice
+  } = params
+
+  try {
+    // 既に system メッセージが存在するか確認（senderId == 'system' のドキュメントがあれば重複と判断）
+    const existingSystemMsgsSnap = await getDocs(
+      query(collection(db, "auctions", auctionId, "chat"), where("senderId", "==", "system"))
+    )
+    if (!existingSystemMsgsSnap.empty) {
+      console.log(`⚠️ 初回チャットメッセージは既に存在します (auctionId=${auctionId}) - 重複生成をスキップ`)
+      return
+    }
+
+    // meta 作成/更新（users 情報）
+    const metaRef = doc(db, "auctions", auctionId, "chat", "meta")
+    await setDoc(metaRef, {
+      users: {
+        seller: { id: sellerId, imageURL: sellerImage },
+        buyer: { id: buyerId, imageURL: buyerImage },
+      },
+      chatInitialized: true,
+      initializedAt: new Date().toISOString(),
+    }, { merge: true })
+
+    // メッセージ本文（表示価格は任意。要求仕様では省略した短い文面を使用）
+    const content = finalPrice != null
+      ? `おめでとうございます！${buyerName}さんが最高入札者となりました。出品者の${sellerName}さんとの取引を開始してください。`
+      : `おめでとうございます！${buyerName}さんが最高入札者となりました。出品者の${sellerName}さんとの取引を開始してください。`
+
+    await addDoc(collection(db, "auctions", auctionId, "chat"), {
+      senderId: "system",
+      senderName: "システム",
+      content,
+      createdAt: serverTimestamp(),
+    })
+    console.log(`✅ 初回チャットメッセージ生成完了 (auctionId=${auctionId})`)
+  } catch (e) {
+    console.error("❌ 初回チャットメッセージ生成エラー", e)
   }
 }
 
@@ -196,6 +257,7 @@ export function useAuctions() {
                 message: `「${auction.title}」のオークションで最高入札者となりました。取引を開始してください。`,
                 auctionId: auction.id,
                 sellerId: auction.sellerId,
+                itemType: "auction" as const,
               })
 
               await sendNotification({
@@ -205,6 +267,7 @@ export function useAuctions() {
                 message: `「${auction.title}」のオークションが終了しました。落札者: ${highestBid.username}`,
                 auctionId: auction.id,
                 buyerId: highestBid.userid,
+                itemType: "auction" as const,
               })
 
               // 取引履歴を保存
@@ -230,6 +293,7 @@ export function useAuctions() {
                 message: `「${auction.title}」の取引が開始されました。出品者とチャットで連絡を取ってください。`,
                 auctionId: auction.id,
                 sellerId: auction.sellerId,
+                itemType: "auction" as const,
               })
 
               await sendNotification({
@@ -239,41 +303,20 @@ export function useAuctions() {
                 message: `「${auction.title}」の取引が開始されました。落札者とチャットで連絡を取ってください。`,
                 auctionId: auction.id,
                 buyerId: highestBid.userid,
+                itemType: "auction" as const,
               })
             
-              // チャットmeta作成
-              try {
-                const metaRef = doc(db, "auctions", auction.id, "chat", "meta")
-                await setDoc(metaRef, {
-                  users: {
-                    seller: {
-                      id: auction.sellerId,
-                      imageURL: auction.images?.[0] || "/placeholder-user.jpg",
-                    },
-                    buyer: {
-                      id: highestBid.userid,
-                      imageURL: buyerImage,
-                    },
-                  },
-                })
-                console.log(`チャットmeta作成: オークション ${auction.id}`)
-              } catch (metaError) {
-                console.error("チャットmeta作成エラー:", metaError)
-              }
-            
-              // チャット初回メッセージを送信
-            try {
-              const chatRef = collection(db, "auctions", auction.id, "chat")
-              await addDoc(chatRef, {
-                senderId: "system",
-                senderName: "システム",
-                  content: `オークションが終了しました。落札者: ${highestBid.username}さん (¥${highestBid.bid_amount.toLocaleString()})\n出品者の${auction.sellerName}さんとの取引を開始してください。`,
-                createdAt: serverTimestamp()
+              // 初回チャットメッセージ生成（重複防止）
+              await createInitialAuctionChatIfNeeded({
+                auctionId: auction.id,
+                sellerId: auction.sellerId,
+                sellerName: auction.sellerName,
+                sellerImage: auction.images?.[0],
+                buyerId: highestBid.userid,
+                buyerName: highestBid.username,
+                buyerImage: buyerImage,
+                finalPrice: highestBid.bid_amount,
               })
-              console.log(`チャット開始: オークション ${auction.id}`)
-            } catch (chatError) {
-              console.error("チャット開始エラー:", chatError)
-            }
             
             console.log(`✅ オークション ${auction.id} が終了しました（データ保持）。落札者: ${highestBid.username}`)
           } else {
@@ -287,6 +330,7 @@ export function useAuctions() {
               title: "オークション終了",
               message: `「${auction.title}」のオークションが終了しました。入札者はいませんでした。`,
               auctionId: auction.id,
+              itemType: "auction" as const,
             })
 
             const auctionRef = doc(db, "auctions", auction.id)
@@ -531,6 +575,7 @@ export function useBidding() {
           message: `「${auctionData.title}」に ${user.displayName || "匿名ユーザー"} さんが ¥${bidAmount.toLocaleString()} で入札しました。`,
           auctionId: auctionId,
           buyerId: user.uid,
+          itemType: "auction" as const,
         })
         console.log("✅ 出品者への入札通知送信完了")
       } catch (notificationError) {
@@ -632,7 +677,7 @@ export function useAuctionManagement() {
   const { user } = useAuth()
   const [isProcessing, setIsProcessing] = useState(false)
 
-  // 最高入札者への通知とチャット開始
+  // 最高入札者への通知（チャット初期メッセージは送信しない）
   const notifyHighestBidder = async (auctionId: string, auctionData: any) => {
     try {
       console.log("🔔 最高入札者への通知開始")
@@ -642,7 +687,7 @@ export function useAuctionManagement() {
         return
       }
 
-      // 通知を作成
+      // 通知のみ作成（チャットメッセージは他の場所で作成される）
       const notificationData = {
         userId: auctionData.highestBidderId,
         userName: auctionData.highestBidderName,
@@ -659,16 +704,7 @@ export function useAuctionManagement() {
 
       await addDoc(collection(db, "notifications"), notificationData)
 
-      // チャットを開始（初期メッセージを追加）
-      const chatColRef = collection(db, "auctions", auctionId, "chat")
-      await addDoc(chatColRef, {
-        senderId: "system",
-        senderName: "システム",
-        content: `おめでとうございます！${auctionData.highestBidderName}さんが最高入札者となりました。出品者の${auctionData.sellerName}さんとの取引を開始してください。`,
-        createdAt: new Date(),
-      })
-
-      console.log("✅ 最高入札者への通知とチャット開始完了")
+      console.log("✅ 最高入札者への通知完了（チャット初期メッセージは別途作成）")
     } catch (error) {
       console.error("❌ 最高入札者への通知エラー:", error)
     }
@@ -963,39 +999,17 @@ export function useAuctionAutoClose() {
                   updatedAt: now.toISOString()
                 })
                 
-                  // チャットmeta作成
-                  try {
-                    const metaRef = doc(db, "auctions", auction.id, "chat", "meta")
-                    await setDoc(metaRef, {
-                      users: {
-                        seller: {
-                          id: auction.data.sellerId,
-                          imageURL: auction.data.sellerImage || "/placeholder-user.jpg",
-                        },
-                        buyer: {
-                          id: highestBid.userid,
-                          imageURL: buyerImage,
-                        },
-                      },
-                    })
-                    console.log(`チャットmeta作成: オークション ${auction.id}`)
-                  } catch (metaError) {
-                    console.error("チャットmeta作成エラー:", metaError)
-                }
-                
-                  // チャット初回メッセージを送信
-                  try {
-                    const chatRef = collection(db, "auctions", auction.id, "chat")
-                    await addDoc(chatRef, {
-                      senderId: "system",
-                      senderName: "システム",
-                      content: `オークションが終了しました。落札者: ${highestBid.username}さん (¥${highestBid.bid_amount.toLocaleString()})\n出品者の${auction.data.sellerName}さんとの取引を開始してください。`,
-                      createdAt: serverTimestamp()
-                    })
-                    console.log(`チャット開始: オークション ${auction.id}`)
-                  } catch (chatError) {
-                    console.error("チャット開始エラー:", chatError)
-                  }
+                  // 初回チャットメッセージ生成（重複防止）
+                  await createInitialAuctionChatIfNeeded({
+                    auctionId: auction.id,
+                    sellerId: auction.data.sellerId,
+                    sellerName: auction.data.sellerName,
+                    sellerImage: auction.data.sellerImage,
+                    buyerId: highestBid.userid,
+                    buyerName: highestBid.username,
+                    buyerImage: buyerImage,
+                    finalPrice: highestBid.bid_amount,
+                  })
                 
                 console.log(`✅ 期限切れオークション終了処理完了（データ保持）: ${auction.id}`)
               } else {
