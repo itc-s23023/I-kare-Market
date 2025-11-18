@@ -23,21 +23,36 @@ export function Header() {
   const isAuctionPage = pathname?.startsWith("/auctions")
 
   const handleNotificationClick = async (notificationId: string, auctionId?: string, productId?: string, type?: string) => {
+    // 対象通知の詳細を取得（追加メタ情報で分岐を強化）
+    const n = notifications.find((x) => x.id === notificationId)
+
     // 通知を既読にする
     await markAsRead(notificationId)
-    
-    // 適切なページにリダイレクト
-    if (type === "chat_message") {
-      // チャット通知の場合、チャットページに移動
-      if (auctionId) {
-        router.push(`/auctions/${auctionId}/chat`)
-      } else if (productId) {
-        router.push(`/chat/${productId}`)
+
+    // チャット系の通知はチャット画面へ
+    if (n?.type === "chat_message") {
+      if (n.auctionId) return router.push(`/auctions/${n.auctionId}/chat`)
+      if (n.productId) return router.push(`/chat/${n.productId}?type=product`)
+    }
+
+    // オークション終了で最高入札者が決まった/取引開始 → チャットへ
+    if ((n?.type === "auction_won" || n?.type === "transaction_started") && n?.auctionId) {
+      return router.push(`/chat/${n.auctionId}?type=auction`)
+    }
+
+    // "オークション終了" でも落札者がいる場合（buyerIdがある）→ チャットへ
+    if (n?.type === "auction_ended" && n?.auctionId && n?.buyerId) {
+      return router.push(`/chat/${n.auctionId}?type=auction`)
+    }
+
+    // 通常のフォールバック（詳細ページへ）
+    if (auctionId) return router.push(`/auctions/${auctionId}`)
+    if (productId) {
+      // productの通知でチャット遷移したいケース（itemTypeがproduct）
+      if (n?.itemType === "product") {
+        return router.push(`/chat/${productId}?type=product`)
       }
-    } else if (auctionId) {
-      router.push(`/auctions/${auctionId}`)
-    } else if (productId) {
-      router.push(`/products/${productId}`)
+      return router.push(`/products/${productId}`)
     }
   }
 
