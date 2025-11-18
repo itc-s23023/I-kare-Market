@@ -41,6 +41,7 @@ const sendNotification = async (notificationData: {
   auctionId?: string
   sellerId?: string
   buyerId?: string
+  itemType?: "product" | "auction"
 }) => {
   try {
     await addDoc(collection(db, "notifications"), {
@@ -196,6 +197,7 @@ export function useAuctions() {
                 message: `「${auction.title}」のオークションで最高入札者となりました。取引を開始してください。`,
                 auctionId: auction.id,
                 sellerId: auction.sellerId,
+                itemType: "auction" as const,
               })
 
               await sendNotification({
@@ -205,6 +207,7 @@ export function useAuctions() {
                 message: `「${auction.title}」のオークションが終了しました。落札者: ${highestBid.username}`,
                 auctionId: auction.id,
                 buyerId: highestBid.userid,
+                itemType: "auction" as const,
               })
 
               // 取引履歴を保存
@@ -230,6 +233,7 @@ export function useAuctions() {
                 message: `「${auction.title}」の取引が開始されました。出品者とチャットで連絡を取ってください。`,
                 auctionId: auction.id,
                 sellerId: auction.sellerId,
+                itemType: "auction" as const,
               })
 
               await sendNotification({
@@ -239,6 +243,7 @@ export function useAuctions() {
                 message: `「${auction.title}」の取引が開始されました。落札者とチャットで連絡を取ってください。`,
                 auctionId: auction.id,
                 buyerId: highestBid.userid,
+                itemType: "auction" as const,
               })
             
               // チャットmeta作成
@@ -287,6 +292,7 @@ export function useAuctions() {
               title: "オークション終了",
               message: `「${auction.title}」のオークションが終了しました。入札者はいませんでした。`,
               auctionId: auction.id,
+              itemType: "auction" as const,
             })
 
             const auctionRef = doc(db, "auctions", auction.id)
@@ -531,6 +537,7 @@ export function useBidding() {
           message: `「${auctionData.title}」に ${user.displayName || "匿名ユーザー"} さんが ¥${bidAmount.toLocaleString()} で入札しました。`,
           auctionId: auctionId,
           buyerId: user.uid,
+          itemType: "auction" as const,
         })
         console.log("✅ 出品者への入札通知送信完了")
       } catch (notificationError) {

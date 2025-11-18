@@ -17,6 +17,7 @@ export interface Notification {
   buyerId?: string
   read: boolean
   createdAt: string
+  itemType?: "product" | "auction" // チャット遷移に必要
 }
 
 export interface Toast {
