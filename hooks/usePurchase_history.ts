@@ -4,17 +4,15 @@ import { useState, useEffect } from "react"
 import { collection, getDocs, query, where } from "firebase/firestore"
 import { db } from "@/lib/firebaseConfig"
 
+// ユーザーサブコレクション保存版購入履歴
 export interface PurchaseHistory {
   id: string
-  productId: string
   productName: string
-  productImage: string
+  purchaseDate: string
   price: number
   sellerId: string
   sellerName: string
-  buyerId: string
-  purchaseDate: string
-  status: "completed" | "pending" | "cancelled"
+  sellerAvatar: string
 }
 
 export function usePurchaseHistory(userId: string) {
@@ -32,11 +30,8 @@ export function usePurchaseHistory(userId: string) {
       try {
         console.log("🔄 購入履歴取得開始:", userId)
         
-        // purchasesコレクションから購入履歴を取得
-        const q = query(
-          collection(db, "purchases"),
-          where("buyerId", "==", userId)
-        )
+  // ユーザー単位で保存された purchases を取得
+  const q = query(collection(db, "users", userId, "purchases"))
         
         const querySnapshot = await getDocs(q)
         const historyData: PurchaseHistory[] = []
@@ -47,15 +42,12 @@ export function usePurchaseHistory(userId: string) {
           
           historyData.push({
             id: doc.id,
-            productId: data.productId || "",
             productName: data.productName || "商品名なし",
-            productImage: data.productImage || "/placeholder.jpg",
-            price: data.price || 0,
+            purchaseDate: data.purchaseDate || new Date().toISOString(),
+            price: typeof data.price === 'number' ? data.price : Number(data.price) || 0,
             sellerId: data.sellerId || "",
             sellerName: data.sellerName || "匿名ユーザー",
-            buyerId: data.buyerId || "",
-            purchaseDate: data.purchaseDate || new Date().toISOString(),
-            status: data.status || "completed"
+            sellerAvatar: data.sellerAvatar || "/seller-avatar.png"
           })
         })
 
