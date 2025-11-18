@@ -10,7 +10,7 @@ import { Star, Package, ShoppingBag, Calendar } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import Image from "next/image"
-import { collection, query, where, getDocs } from "firebase/firestore"
+import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore"
 import { db } from "@/lib/firebaseConfig"
 
 interface UserProfile {
@@ -21,6 +21,7 @@ interface UserProfile {
   avatar?: string
   transactions: number
   evalution: number
+  evaluationCount: number // 評価件数を追加
 }
 
 interface Product {
@@ -31,6 +32,15 @@ interface Product {
   status: string
   condition?: string
   createdAt: string
+}
+
+interface Evaluation {
+  id: string
+  user: string
+  userimageURL: string
+  content: string
+  score: number
+  createdAt?: string
 }
 
 const conditionLabels = {
@@ -49,9 +59,9 @@ export default function UserProfilePage() {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [userProducts, setUserProducts] = useState<Product[]>([])
   const [soldProducts, setSoldProducts] = useState<Product[]>([])
+  const [evaluations, setEvaluations] = useState<Evaluation[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-
 
   useEffect(() => {
     if (!userId) return
@@ -59,20 +69,19 @@ export default function UserProfilePage() {
     const fetchUserData = async () => {
       try {
         // usersコレクションからユーザー情報取得（ドキュメントIDで直接取得）
-        const { getDoc, doc } = await import("firebase/firestore")
         const userDocRef = doc(db, "users", userId)
         const userDocSnap = await getDoc(userDocRef)
         if (!userDocSnap.exists()) throw new Error("ユーザー情報が見つかりません")
         const userData = userDocSnap.data()
 
-  // avatar取得
-  const avatarUrl = userData.avatar || "/placeholder.svg"
-  // ユーザー名はusernameで取得
-  const userName = userData.username || "匿名ユーザー"
-  const userEmail = userData.email || ""
-  const earliestDate = userData.joinedDate || new Date().toISOString()
-  // 取引回数（数値）
-  const transactionCount = typeof userData.transactions === "number" ? userData.transactions : 0
+        // avatar取得
+        const avatarUrl = userData.avatar || "/placeholder.svg"
+        // ユーザー名はusernameで取得
+        const userName = userData.username || "匿名ユーザー"
+        const userEmail = userData.email || ""
+        const earliestDate = userData.joinedDate || new Date().toISOString()
+        // 取引回数（数値）
+        const transactionCount = typeof userData.transactions === "number" ? userData.transactions : 0
 
         // 商品情報取得（販売中・売却済み）
         const productsQuery = query(
@@ -100,7 +109,34 @@ export default function UserProfilePage() {
         })
         products.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 
-        const evalution = typeof userData.evalution === "number" ? userData.evalution : 0
+        // 評価情報取得
+        const evaluationsQuery = collection(db, "users", userId, "evaluations")
+        const evaluationsSnapshot = await getDocs(evaluationsQuery)
+        const evaluationsData: Evaluation[] = []
+        
+        evaluationsSnapshot.forEach((doc) => {
+          const data = doc.data()
+          evaluationsData.push({
+            id: doc.id,
+            user: data.user || "匿名ユーザー",
+            userimageURL: data.userimageURL || "/placeholder-user.jpg",
+            content: data.content || "",
+            score: Number(data.score) || 0,
+            createdAt: data.createdAt || new Date().toISOString()
+          })
+        })
+        
+        // 評価を最新順にソート
+        evaluationsData.sort((a, b) => {
+          const dateA = new Date(a.createdAt || "")
+          const dateB = new Date(b.createdAt || "")
+          return dateB.getTime() - dateA.getTime()
+        })
+
+        // Firestoreのevalutionフィールドから評価スコアを取得
+        const evalution = userData.evalution || 0
+        const evaluationCount = evaluationsData.length
+
         const profile: UserProfile = {
           id: userId,
           name: userName,
@@ -108,12 +144,14 @@ export default function UserProfilePage() {
           joinedDate: earliestDate,
           avatar: avatarUrl,
           transactions: transactionCount,
-          evalution
+          evalution,
+          evaluationCount
         }
 
         setUserProfile(profile)
         setUserProducts(products)
         setSoldProducts(sold)
+        setEvaluations(evaluationsData)
       } catch (error: any) {
         console.error("❌ ユーザー情報取得エラー:", error)
         setError(`ユーザー情報の取得に失敗しました`)
@@ -315,6 +353,56 @@ export default function UserProfilePage() {
                   </Button>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* 評価一覧セクション */}
+        {evaluations.length > 0 && (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Star className="h-5 w-5" />
+                受けた評価 ({evaluations.length}件)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {evaluations.map((evaluation) => (
+                  <Card key={evaluation.id}>
+                    <CardContent className="p-4">
+                      <div className="flex items-start gap-4">
+                        <Avatar>
+                          <AvatarImage src={evaluation.userimageURL} />
+                          <AvatarFallback>{evaluation.user[0]}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="font-semibold">{evaluation.user}</span>
+                            <div className="flex items-center gap-1">
+                              {Array.from({ length: evaluation.score }).map((_, i) => (
+                                <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                              ))}
+                              {Array.from({ length: 5 - evaluation.score }).map((_, i) => (
+                                <Star key={i} className="h-4 w-4 text-gray-300" />
+                              ))}
+                            </div>
+                            <span className="text-sm text-muted-foreground">({evaluation.score}/5)</span>
+                          </div>
+                          {evaluation.content && (
+                            <p className="text-sm text-muted-foreground mb-2 leading-relaxed">
+                              {evaluation.content}
+                            </p>
+                          )}
+                          <span className="text-xs text-muted-foreground">
+                            {evaluation.createdAt ? new Date(evaluation.createdAt).toLocaleDateString("ja-JP") : ""}
+                          </span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
             </CardContent>
           </Card>
         )}

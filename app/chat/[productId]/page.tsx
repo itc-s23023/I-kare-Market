@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Send, Check } from "lucide-react"
 import { useAuth } from "@/components/auth-provider"
 import { useChat } from "@/hooks/useChat"
-import { doc, getDoc, setDoc, updateDoc, onSnapshot, collection, addDoc, deleteDoc, getDocs } from "firebase/firestore"
+import { doc, getDoc, setDoc, updateDoc, onSnapshot, collection, addDoc, deleteDoc, getDocs, query, where, increment } from "firebase/firestore"
 import { db } from "@/lib/firebaseConfig"
 import Image from "next/image"
 import { notFound, useRouter, useSearchParams } from "next/navigation"
@@ -229,11 +229,45 @@ function ChatPageContent({ params }: { params: Promise<{ productId: string }> })
   const handleAgree = async () => {
     if (!user || !productId) return
     try {
-        const metaRef = doc(db, collectionName, productId, "chat", "meta")
+      const metaRef = doc(db, collectionName, productId, "chat", "meta")
+
       if (isSeller) {
         await setDoc(metaRef, { sellerAgreed: true }, { merge: true })
       } else {
         await setDoc(metaRef, { buyerAgreed: true }, { merge: true })
+      }
+
+      // 同意した時に相手に通知を送信
+      try {
+        const recipientId = isSeller ? buyerIdFromMeta : product.sellerId
+        const agreementType = isSeller ? "出品者" : "購入者"
+        
+        if (recipientId && recipientId !== user.uid) {
+          // 通知データを準備
+          const notificationData: any = {
+            userId: recipientId,
+            type: "transaction_agreed",
+            title: "取引同意",
+            message: `「${product.title}」について${agreementType}が取引に同意しました。`,
+            read: false,
+            createdAt: new Date().toISOString()
+          }
+
+          // アイテムタイプに応じて適切なIDフィールドを設定
+          if (itemType === 'auction') {
+            notificationData.auctionId = productId
+          } else {
+            notificationData.productId = productId
+          }
+          notificationData.senderId = user.uid
+
+          // 通知をFirestoreに保存
+          await addDoc(collection(db, "notifications"), notificationData)
+          console.log("✅ 取引同意通知を送信しました:", { recipientId, agreementType })
+        }
+      } catch (notificationError) {
+        console.error("❌ 取引同意通知の送信エラー:", notificationError)
+        // 通知の失敗は同意処理を阻害しない
       }
     } catch (e) {
       console.error("同意の更新に失敗しました", e)
@@ -260,6 +294,18 @@ function ChatPageContent({ params }: { params: Promise<{ productId: string }> })
         itemType,
         itemId: product.id
       })
+
+      // この商品/オークションに関連する通知を削除
+      try {
+        const notificationsQuery = itemType === 'auction'
+          ? query(collection(db, "notifications"), where("auctionId", "==", productId))
+          : query(collection(db, "notifications"), where("productId", "==", productId))
+        const notificationsSnap = await getDocs(notificationsQuery)
+        await Promise.all(notificationsSnap.docs.map(doc => deleteDoc(doc.ref)))
+        console.log(`🧹 関連通知を削除しました: ${notificationsSnap.size}件`)
+      } catch (e) {
+        console.error("❌ 関連通知の削除に失敗しました", e)
+      }
 
       // users/{sellerId} の評価集約値(evalution)を再計算し反映
       try {
@@ -289,10 +335,21 @@ function ChatPageContent({ params }: { params: Promise<{ productId: string }> })
           itemId: product.id
         })
         console.log("✅ users/" + user.uid + "/purchases へ購入履歴保存完了")
+        router.push("/")
       } catch (e) {
         console.error("❌ purchases への購入履歴保存に失敗", e)
       }
 
+      // 売り手の総売上を更新
+      try {
+        const sellerRef = doc(db, "users", product.sellerId)
+        await updateDoc(sellerRef, {
+          Sales: increment(product.price || 0)
+        })
+        console.log(`✅ 売り手(${product.sellerId})の総売上を更新: +¥${product.price}`)
+      } catch (e) {
+        console.error("❌ 売り手の総売上更新に失敗", e)
+      }
       // サブコレクション(chat)削除
       try {
         const chatCol = collection(db, collectionName, productId, "chat")

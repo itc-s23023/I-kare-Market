@@ -16,6 +16,7 @@ import { usePurchaseHistory } from "@/hooks/usePurchase_history"
 import { useLikes } from "@/hooks/uselike"
 import { useAuctions } from "@/hooks/useAuctions"
 import { useAuth } from "@/components/auth-provider"
+import { useEvaluations } from "@/hooks/useEvaluations"
 import { ProtectedRoute } from "@/components/protected-route"
 
 // 動的レンダリングを強制
@@ -44,6 +45,7 @@ export default function ProfilePage() {
     loading: auctionsLoading,
     error: auctionsError,
   } = useAuctions()
+  const { evaluations, loading: evaluationsLoading, error: evaluationsError } = useEvaluations()
 
   // ユーザーが出品したオークション商品をフィルタリング（アクティブなもののみ）
   const userAuctions = allAuctions.filter((auction) => 
@@ -314,49 +316,56 @@ export default function ProfilePage() {
             </TabsContent>
 
             <TabsContent value="reviews" className="mt-6">
-              <div className="space-y-4">
-                {[
-                  {
-                    id: "1",
-                    reviewer: "佐藤花子",
-                    rating: 5,
-                    comment: "迅速な対応ありがとうございました！商品も綺麗でした。",
-                    date: "2024-01-10",
-                  },
-                  {
-                    id: "2",
-                    reviewer: "鈴木一郎",
-                    rating: 4,
-                    comment: "良い取引でした。また機会があればよろしくお願いします。",
-                    date: "2024-01-05",
-                  },
-                ].map((review) => (
-                  <Card key={review.id}>
-                    <CardContent className="p-4">
-                      <div className="flex items-start gap-4">
-                        <Avatar>
-                          <AvatarImage src="/reviewer-avatar.png" />
-                          <AvatarFallback>{review.reviewer[0]}</AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className="font-semibold">{review.reviewer}</span>
-                            <div className="flex items-center gap-1">
-                              {Array.from({ length: review.rating }).map((_, i) => (
-                                <Star key={i} className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                              ))}
+              {evaluationsLoading ? (
+                <div className="text-center py-12">評価を読み込み中...</div>
+              ) : evaluationsError ? (
+                <div className="text-center py-12 text-red-500">{evaluationsError}</div>
+              ) : evaluations.length > 0 ? (
+                <div className="space-y-4">
+                  {evaluations.map((evaluation) => (
+                    <Card key={evaluation.id}>
+                      <CardContent className="p-4">
+                        <div className="flex items-start gap-4">
+                          <Avatar>
+                            <AvatarImage src={evaluation.userimageURL} />
+                            <AvatarFallback>{evaluation.user[0]}</AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="font-semibold">{evaluation.user}</span>
+                              <div className="flex items-center gap-1">
+                                {Array.from({ length: evaluation.score }).map((_, i) => (
+                                  <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                                ))}
+                                {Array.from({ length: 5 - evaluation.score }).map((_, i) => (
+                                  <Star key={i} className="h-4 w-4 text-gray-300" />
+                                ))}
+                              </div>
+                              <span className="text-sm text-muted-foreground">({evaluation.score}/5)</span>
                             </div>
+                            {evaluation.content && (
+                              <p className="text-sm text-muted-foreground mb-2 leading-relaxed">
+                                {evaluation.content}
+                              </p>
+                            )}
+                            <span className="text-xs text-muted-foreground">
+                              {evaluation.createdAt ? new Date(evaluation.createdAt).toLocaleDateString("ja-JP") : ""}
+                            </span>
                           </div>
-                          <p className="text-sm text-muted-foreground mb-2 leading-relaxed">{review.comment}</p>
-                          <span className="text-xs text-muted-foreground">
-                            {new Date(review.date).toLocaleDateString("ja-JP")}
-                          </span>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <Star className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                  <p className="text-muted-foreground mb-4">まだ評価がありません</p>
+                  <p className="text-sm text-muted-foreground">
+                    取引を完了すると、相手から評価を受けることができます
+                  </p>
+                </div>
+              )}
             </TabsContent>
           </Tabs>
         </div>

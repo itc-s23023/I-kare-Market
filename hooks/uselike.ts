@@ -61,7 +61,6 @@ export function useLikes() {
                     userid: data?.userid || "",
                     content: data?.content || "",
                     is_trading: !!data?.is_trading,
-                    category: data?.category || "other",
                     condition: data?.condition || "good",
                     createdAt,
                     status: data?.status || "active",

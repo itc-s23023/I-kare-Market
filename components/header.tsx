@@ -8,9 +8,9 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { mockNotifications } from "@/lib/mock-data"
 import { useRouter, usePathname } from "next/navigation"
 import { useAuth } from "@/components/auth-provider"
+import { useNotifications } from "@/hooks/useNotifications"
 import { signOut } from "firebase/auth"
 import { auth } from "@/lib/firebaseConfig"
 
@@ -18,15 +18,47 @@ export function Header() {
   const router = useRouter()
   const pathname = usePathname()
   const { user, loading } = useAuth()
-  const unreadCount = (mockNotifications || []).filter((n) => !n.read).length
+  const { notifications, unreadCount, markAsRead } = useNotifications()
 
   const isAuctionPage = pathname?.startsWith("/auctions")
 
-  const handleNotificationClick = (productId: string, type: string) => {
-    if (type === "auction" || productId.startsWith("a")) {
-      router.push(`/auctions/${productId}`)
-    } else {
-      router.push(`/products/${productId}`)
+  const handleNotificationClick = async (notificationId: string, auctionId?: string, productId?: string, type?: string) => {
+    // 対象通知の詳細を取得（追加メタ情報で分岐を強化）
+    const n = notifications.find((x) => x.id === notificationId)
+
+    // 通知を既読にする
+    await markAsRead(notificationId)
+
+    // チャット系の通知はチャット画面へ
+    if (n?.type === "chat_message") {
+      if (n.auctionId) return router.push(`/auctions/${n.auctionId}/chat`)
+      if (n.productId) return router.push(`/chat/${n.productId}?type=product`)
+    }
+
+    // 取引同意の通知はチャット画面へ
+    if (n?.type === "transaction_agreed") {
+      if (n.auctionId) return router.push(`/chat/${n.auctionId}?type=auction`)
+      if (n.productId) return router.push(`/chat/${n.productId}?type=product`)
+    }
+
+    // オークション終了で最高入札者が決まった/取引開始 → チャットへ
+    if ((n?.type === "auction_won" || n?.type === "transaction_started") && n?.auctionId) {
+      return router.push(`/chat/${n.auctionId}?type=auction`)
+    }
+
+    // "オークション終了" でも落札者がいる場合（buyerIdがある）→ チャットへ
+    if (n?.type === "auction_ended" && n?.auctionId && n?.buyerId) {
+      return router.push(`/chat/${n.auctionId}?type=auction`)
+    }
+
+    // 通常のフォールバック（詳細ページへ）
+    if (auctionId) return router.push(`/auctions/${auctionId}`)
+    if (productId) {
+      // productの通知でチャット遷移したいケース（itemTypeがproduct）
+      if (n?.itemType === "product") {
+        return router.push(`/chat/${productId}?type=product`)
+      }
+      return router.push(`/products/${productId}`)
     }
   }
 
@@ -100,27 +132,30 @@ export function Header() {
                   )}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-80">
+              <DropdownMenuContent align="end" className="w-80 max-h-96 overflow-y-auto">
                 <div className="px-2 py-1.5 text-sm font-semibold">通知</div>
-                {(mockNotifications || []).length === 0 ? (
+                {notifications.length === 0 ? (
                   <div className="px-2 py-8 text-center text-sm text-muted-foreground">通知はありません</div>
                 ) : (
-                  (mockNotifications || []).map((notification) => (
+                  notifications.map((notification) => (
                     <DropdownMenuItem
                       key={notification.id}
                       className="flex flex-col items-start gap-1 p-3 cursor-pointer"
-                      onClick={() => handleNotificationClick(notification.productId, notification.type)}
+                      onClick={() => handleNotificationClick(notification.id, notification.auctionId, notification.productId, notification.type)}
                     >
                       <div className="flex items-start gap-2 w-full">
                         <div className="flex-1">
-                          <p className={`text-sm leading-relaxed ${!notification.read ? "font-semibold" : ""}`}>
+                          <p className={`text-sm font-medium ${!notification.read ? "text-foreground" : "text-muted-foreground"}`}>
+                            {notification.title}
+                          </p>
+                          <p className={`text-sm leading-relaxed mt-1 ${!notification.read ? "text-foreground" : "text-muted-foreground"}`}>
                             {notification.message}
                           </p>
                           <p className="text-xs text-muted-foreground mt-1">
-                            {new Date(notification.timestamp).toLocaleString("ja-JP")}
+                            {new Date(notification.createdAt).toLocaleString("ja-JP")}
                           </p>
                         </div>
-                        {!notification.read && <div className="h-2 w-2 rounded-full bg-primary mt-1" />}
+                        {!notification.read && <div className="h-2 w-2 rounded-full bg-primary mt-1 flex-shrink-0" />}
                       </div>
                     </DropdownMenuItem>
                   ))
@@ -216,7 +251,7 @@ export function Header() {
               {user ? (
                 <>
                   <Button asChild variant="ghost" className="w-full justify-start relative">
-                    <Link href="/profile">
+                    <div className="flex items-center w-full">
                       <Bell className="h-4 w-4 mr-2" />
                       通知
                       {unreadCount > 0 && (
@@ -224,7 +259,7 @@ export function Header() {
                           {unreadCount}
                         </Badge>
                       )}
-                    </Link>
+                    </div>
                   </Button>
                   <Button asChild variant="ghost" className="w-full justify-start">
                     <Link href="/profile">
