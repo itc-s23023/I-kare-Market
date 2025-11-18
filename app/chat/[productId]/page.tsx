@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Send, Check } from "lucide-react"
 import { useAuth } from "@/components/auth-provider"
 import { useChat } from "@/hooks/useChat"
-import { doc, getDoc, setDoc, updateDoc, onSnapshot, collection, addDoc, deleteDoc, getDocs, query, where } from "firebase/firestore"
+import { doc, getDoc, setDoc, updateDoc, onSnapshot, collection, addDoc, deleteDoc, getDocs, query, where, increment } from "firebase/firestore"
 import { db } from "@/lib/firebaseConfig"
 import Image from "next/image"
 import { notFound, useRouter, useSearchParams } from "next/navigation"
@@ -337,6 +337,17 @@ function ChatPageContent({ params }: { params: Promise<{ productId: string }> })
         router.push("/")
       } catch (e) {
         console.error("❌ purchases への購入履歴保存に失敗", e)
+      }
+
+      // 売り手の総売上を更新
+      try {
+        const sellerRef = doc(db, "users", product.sellerId)
+        await updateDoc(sellerRef, {
+          Sales: increment(product.price || 0)
+        })
+        console.log(`✅ 売り手(${product.sellerId})の総売上を更新: +¥${product.price}`)
+      } catch (e) {
+        console.error("❌ 売り手の総売上更新に失敗", e)
       }
 
       // サブコレクション(chat)削除
