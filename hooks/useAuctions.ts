@@ -32,6 +32,27 @@ export interface BiddingHistory {
   bid_time: string
 }
 
+// 通知送信用の関数
+const sendNotification = async (notificationData: {
+  userId: string
+  type: "bid_placed" | "auction_won" | "auction_ended" | "transaction_started"
+  title: string
+  message: string
+  auctionId?: string
+  sellerId?: string
+  buyerId?: string
+}) => {
+  try {
+    await addDoc(collection(db, "notifications"), {
+      ...notificationData,
+      read: false,
+      createdAt: new Date().toISOString(),
+    })
+  } catch (error) {
+    console.error("通知送信エラー:", error)
+  }
+}
+
 export function useAuctions() {
   const [auctions, setAuctions] = useState<Auction[]>([])
   const [loading, setLoading] = useState(true)
@@ -166,6 +187,59 @@ export function useAuctions() {
             setAuctions(prev => prev.map(a => 
               a.id === auction.id ? { ...a, status: 'ended' as const } : a
             ))
+
+              // 落札者と出品者に通知を送信
+              await sendNotification({
+                userId: highestBid.userid,
+                type: "auction_won",
+                title: "オークション落札",
+                message: `「${auction.title}」のオークションで最高入札者となりました。取引を開始してください。`,
+                auctionId: auction.id,
+                sellerId: auction.sellerId,
+              })
+
+              await sendNotification({
+                userId: auction.sellerId,
+                type: "auction_ended",
+                title: "オークション終了",
+                message: `「${auction.title}」のオークションが終了しました。落札者: ${highestBid.username}`,
+                auctionId: auction.id,
+                buyerId: highestBid.userid,
+              })
+
+              // 取引履歴を保存
+              const transactionData = {
+                auctionId: auction.id,
+                auctionTitle: auction.title,
+                sellerId: auction.sellerId,
+                sellerName: auction.sellerName,
+                winnerId: highestBid.userid,
+                winnerName: highestBid.username,
+                finalPrice: highestBid.bid_amount,
+                endTime: auction.endTime,
+                completedAt: new Date().toISOString(),
+                type: "auction_completed",
+              }
+              await addDoc(collection(db, "transactions"), transactionData)
+
+              // 取引開始の通知を両者に送信
+              await sendNotification({
+                userId: highestBid.userid,
+                type: "transaction_started",
+                title: "取引開始",
+                message: `「${auction.title}」の取引が開始されました。出品者とチャットで連絡を取ってください。`,
+                auctionId: auction.id,
+                sellerId: auction.sellerId,
+              })
+
+              await sendNotification({
+                userId: auction.sellerId,
+                type: "transaction_started",
+                title: "取引開始",
+                message: `「${auction.title}」の取引が開始されました。落札者とチャットで連絡を取ってください。`,
+                auctionId: auction.id,
+                buyerId: highestBid.userid,
+              })
             
               // チャットmeta作成
               try {
@@ -206,6 +280,15 @@ export function useAuctions() {
             // 入札がない場合：完全にデータを削除
             console.log(`入札がないオークション ${auction.id} を完全削除します`)
             
+            // 出品者に通知
+            await sendNotification({
+              userId: auction.sellerId,
+              type: "auction_ended",
+              title: "オークション終了",
+              message: `「${auction.title}」のオークションが終了しました。入札者はいませんでした。`,
+              auctionId: auction.id,
+            })
+
             const auctionRef = doc(db, "auctions", auction.id)
             await deleteDoc(auctionRef)
             
