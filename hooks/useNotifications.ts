@@ -8,7 +8,7 @@ import { useAuth } from "@/components/auth-provider"
 export interface Notification {
   id: string
   userId: string
-  type: "bid_placed" | "auction_won" | "auction_ended" | "transaction_started" | "chat_message"
+  type: "bid_placed" | "auction_won" | "auction_ended" | "transaction_started" | "chat_message" | "transaction_agreed"
   title: string
   message: string
   auctionId?: string
