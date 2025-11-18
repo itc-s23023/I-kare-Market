@@ -521,6 +521,23 @@ export function useBidding() {
       console.log("📈 オークション情報更新:", updateData)
       await updateDoc(auctionRef, updateData)
 
+      // 出品者に入札通知を送信
+      try {
+        console.log("🔔 出品者への入札通知送信開始")
+        await sendNotification({
+          userId: auctionData.sellerId,
+          type: "bid_placed",
+          title: "新しい入札",
+          message: `「${auctionData.title}」に ${user.displayName || "匿名ユーザー"} さんが ¥${bidAmount.toLocaleString()} で入札しました。`,
+          auctionId: auctionId,
+          buyerId: user.uid,
+        })
+        console.log("✅ 出品者への入札通知送信完了")
+      } catch (notificationError) {
+        console.error("⚠️ 入札通知送信エラー（入札自体は成功）:", notificationError)
+        // 通知エラーでも入札は成功しているので処理は続行
+      }
+
       console.log("✅ 入札完了")
       return { 
         success: true, 
