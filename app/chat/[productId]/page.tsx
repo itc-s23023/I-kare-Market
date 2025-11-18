@@ -229,11 +229,44 @@ function ChatPageContent({ params }: { params: Promise<{ productId: string }> })
   const handleAgree = async () => {
     if (!user || !productId) return
     try {
-        const metaRef = doc(db, collectionName, productId, "chat", "meta")
+      const metaRef = doc(db, collectionName, productId, "chat", "meta")
       if (isSeller) {
         await setDoc(metaRef, { sellerAgreed: true }, { merge: true })
       } else {
         await setDoc(metaRef, { buyerAgreed: true }, { merge: true })
+      }
+
+      // 同意した時に相手に通知を送信
+      try {
+        const recipientId = isSeller ? buyerIdFromMeta : product.sellerId
+        const agreementType = isSeller ? "出品者" : "購入者"
+        
+        if (recipientId && recipientId !== user.uid) {
+          // 通知データを準備
+          const notificationData: any = {
+            userId: recipientId,
+            type: "transaction_agreed",
+            title: "取引同意",
+            message: `「${product.title}」について${agreementType}が取引に同意しました。`,
+            read: false,
+            createdAt: new Date().toISOString()
+          }
+
+          // アイテムタイプに応じて適切なIDフィールドを設定
+          if (itemType === 'auction') {
+            notificationData.auctionId = productId
+          } else {
+            notificationData.productId = productId
+          }
+          notificationData.senderId = user.uid
+
+          // 通知をFirestoreに保存
+          await addDoc(collection(db, "notifications"), notificationData)
+          console.log("✅ 取引同意通知を送信しました:", { recipientId, agreementType })
+        }
+      } catch (notificationError) {
+        console.error("❌ 取引同意通知の送信エラー:", notificationError)
+        // 通知の失敗は同意処理を阻害しない
       }
     } catch (e) {
       console.error("同意の更新に失敗しました", e)
@@ -301,6 +334,7 @@ function ChatPageContent({ params }: { params: Promise<{ productId: string }> })
           itemId: product.id
         })
         console.log("✅ users/" + user.uid + "/purchases へ購入履歴保存完了")
+        router.push("/")
       } catch (e) {
         console.error("❌ purchases への購入履歴保存に失敗", e)
       }
