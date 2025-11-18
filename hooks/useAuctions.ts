@@ -316,34 +316,6 @@ export function useAuctions() {
                 buyerName: highestBid.username,
                 buyerImage: buyerImage,
                 finalPrice: highestBid.bid_amount,
-              // チャットmeta作成
-              try {
-                const metaRef = doc(db, "auctions", auction.id, "chat", "meta")
-                await setDoc(metaRef, {
-                  users: {
-                    seller: {
-                      id: auction.sellerId,
-                      imageURL: auction.images?.[0] || "/placeholder-user.jpg",
-                    },
-                    buyer: {
-                      id: highestBid.userid,
-                      imageURL: buyerImage,
-                    },
-                  },
-                })
-                console.log(`チャットmeta作成: オークション ${auction.id}`)
-              } catch (metaError) {
-                console.error("チャットmeta作成エラー:", metaError)
-              }
-            
-              // チャット初回メッセージを送信
-            try {
-              const chatRef = collection(db, "auctions", auction.id, "chat")
-              await addDoc(chatRef, {
-                senderId: "system",
-                senderName: "システム",
-                  content: `オークションが終了しました。落札者: ${highestBid.username}さん (¥${highestBid.bid_amount.toLocaleString()})\n出品者の${auction.sellerName}さんとの取引を開始してください。`,
-                createdAt: serverTimestamp()
               })
             
             console.log(`✅ オークション ${auction.id} が終了しました（データ保持）。落札者: ${highestBid.username}`)
@@ -1038,40 +1010,6 @@ export function useAuctionAutoClose() {
                     buyerImage: buyerImage,
                     finalPrice: highestBid.bid_amount,
                   })
-                
-                  // チャットmeta作成
-                  try {
-                    const metaRef = doc(db, "auctions", auction.id, "chat", "meta")
-                    await setDoc(metaRef, {
-                      users: {
-                        seller: {
-                          id: auction.data.sellerId,
-                          imageURL: auction.data.sellerImage || "/placeholder-user.jpg",
-                        },
-                        buyer: {
-                          id: highestBid.userid,
-                          imageURL: buyerImage,
-                        },
-                      },
-                    })
-                    console.log(`チャットmeta作成: オークション ${auction.id}`)
-                  } catch (metaError) {
-                    console.error("チャットmeta作成エラー:", metaError)
-                }
-                
-                  // チャット初回メッセージを送信
-                  try {
-                    const chatRef = collection(db, "auctions", auction.id, "chat")
-                    await addDoc(chatRef, {
-                      senderId: "system",
-                      senderName: "システム",
-                      content: `オークションが終了しました。落札者: ${highestBid.username}さん (¥${highestBid.bid_amount.toLocaleString()})\n出品者の${auction.data.sellerName}さんとの取引を開始してください。`,
-                      createdAt: serverTimestamp()
-                    })
-                    console.log(`チャット開始: オークション ${auction.id}`)
-                  } catch (chatError) {
-                    console.error("チャット開始エラー:", chatError)
-                  }
                 
                 console.log(`✅ 期限切れオークション終了処理完了（データ保持）: ${auction.id}`)
               } else {
