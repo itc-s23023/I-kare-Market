@@ -35,6 +35,12 @@ export function Header() {
       if (n.productId) return router.push(`/chat/${n.productId}?type=product`)
     }
 
+    // 取引同意の通知はチャット画面へ
+    if (n?.type === "transaction_agreed") {
+      if (n.auctionId) return router.push(`/chat/${n.auctionId}?type=auction`)
+      if (n.productId) return router.push(`/chat/${n.productId}?type=product`)
+    }
+
     // オークション終了で最高入札者が決まった/取引開始 → チャットへ
     if ((n?.type === "auction_won" || n?.type === "transaction_started") && n?.auctionId) {
       return router.push(`/chat/${n.auctionId}?type=auction`)
