@@ -87,6 +87,24 @@ function ChatPageContent({ params }: { params: Promise<{ productId: string }> })
     })
     return () => unsub()
   }, [productId, collectionName])
+
+  // 商品/オークションの存在を監視し、削除されたらトップページへ遷移
+  useEffect(() => {
+    if (!productId) return
+    
+    const docRef = doc(db, collectionName, productId)
+    const unsubscribe = onSnapshot(docRef, (snapshot) => {
+      if (!snapshot.exists()) {
+        // 商品が削除された場合、トップページへ遷移
+        console.log("🔄 商品/オークションが削除されました。トップページへ遷移します。")
+        router.push("/")
+      }
+    }, (error) => {
+      console.error("商品監視エラー:", error)
+    })
+
+    return () => unsubscribe()
+  }, [productId, collectionName, router])
   type Message = {
     id: string
     senderId: string
@@ -180,13 +198,14 @@ function ChatPageContent({ params }: { params: Promise<{ productId: string }> })
       </div>
     )
   }
-  // アクセス制御: is_tradingがtrueのとき、出品者・購入者以外はアクセス不可（chat/meta参照）
+  // アクセス制御: is_trading=true のとき、chatMeta が存在する場合のみ外部ユーザーをブロック
+  // chatMeta が削除される（取引完了時のクリーンアップ）タイミングで 404 にならないようにする
   if (
     error ||
     !product ||
-    (product.is_trading === true && user && (
-      !chatMeta ||
-      (user.uid !== (chatMeta.users?.seller?.id ?? "") && user.uid !== (chatMeta.users?.buyer?.id ?? ""))
+    (product.is_trading === true && user && chatMeta && (
+      user.uid !== (chatMeta.users?.seller?.id ?? "") &&
+      user.uid !== (chatMeta.users?.buyer?.id ?? "")
     ))
   ) {
     notFound()
@@ -335,7 +354,6 @@ function ChatPageContent({ params }: { params: Promise<{ productId: string }> })
           itemId: product.id
         })
         console.log("✅ users/" + user.uid + "/purchases へ購入履歴保存完了")
-        router.push("/")
       } catch (e) {
         console.error("❌ purchases への購入履歴保存に失敗", e)
       }
@@ -377,7 +395,8 @@ function ChatPageContent({ params }: { params: Promise<{ productId: string }> })
         }
       }
 
-      router.push("/profile")
+        console.log("✅ 取引完了処理が完了しました。商品削除を検知してトップページへ遷移します。")
+        // Note: 商品削除後、リアルタイム監視が自動的にトップページへ遷移させます
     } catch (e) {
       console.error("評価の送信または商品削除に失敗しました", e)
     }
