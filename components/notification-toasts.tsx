@@ -15,6 +15,18 @@ export function  NotificationToasts() {
     const notification = notifications.find(n => n.id === toastId)
     if (!notification) return
 
+    // チャットメッセージ通知の処理
+    if (notification.type === "chat_message") {
+      if (notification.auctionId) {
+        router.push(`/chat/${notification.auctionId}?type=auction`)
+        removeToast(toastId)
+      } else if (notification.productId) {
+        router.push(`/chat/${notification.productId}?type=product`)
+        removeToast(toastId)
+      }
+      return
+    }
+
     // オークション落札・終了の通知からチャットへ遷移
     if ((notification.type === "auction_won" || notification.type === "auction_ended" || notification.type === "transaction_started") && notification.auctionId) {
       router.push(`/chat/${notification.auctionId}?type=auction`)
