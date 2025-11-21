@@ -23,7 +23,7 @@ export function Header() {
   const isAuctionPage = pathname?.startsWith("/auctions")
 
   const handleNotificationClick = async (notificationId: string, auctionId?: string, productId?: string, type?: string) => {
-    // 対象通知の詳細を取得（追加メタ情報で分岐を強化）
+    // 対象通知の詳細を取得(追加メタ情報で分岐を強化)
     const n = notifications.find((x) => x.id === notificationId)
 
     // 通知を既読にする
@@ -31,7 +31,7 @@ export function Header() {
 
     // チャット系の通知はチャット画面へ
     if (n?.type === "chat_message") {
-      if (n.auctionId) return router.push(`/auctions/${n.auctionId}/chat`)
+      if (n.auctionId) return router.push(`/chat/${n.auctionId}?type=auction`)
       if (n.productId) return router.push(`/chat/${n.productId}?type=product`)
     }
 
