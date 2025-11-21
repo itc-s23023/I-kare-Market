@@ -6,10 +6,10 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Star, Package, ShoppingBag, Calendar, Heart } from "lucide-react"
-import { mockUser } from "@/lib/mock-data"
 import { ProductCard } from "@/components/product-card"
 import { AuctionCard } from "@/components/auction-card"
 import Link from "next/link"
+import { useMemo } from "react"
 
 import { useProducts } from "@/hooks/useProducts"
 import { usePurchaseHistory } from "@/hooks/usePurchase_history"
@@ -52,12 +52,32 @@ export default function ProfilePage() {
     auction.sellerId === user?.uid && auction.status === "active"
   )
 
+  // 評価データから平均評価とレビュー数を計算
+  const { averageRating, reviewCount } = useMemo(() => {
+    if (!evaluations || evaluations.length === 0) {
+      return { averageRating: 0, reviewCount: 0 }
+    }
+    const totalScore = evaluations.reduce((sum, ev) => sum + ev.score, 0)
+    return {
+      averageRating: Math.round((totalScore / evaluations.length) * 10) / 10,
+      reviewCount: evaluations.length
+    }
+  }, [evaluations])
+
+  // Firebase Authから登録日を取得
+  const joinedDate = useMemo(() => {
+    if (user?.metadata?.creationTime) {
+      return new Date(user.metadata.creationTime).toISOString().split('T')[0]
+    }
+    return new Date().toISOString().split('T')[0]
+  }, [user])
+
   const profile = {
-    name: user?.displayName || mockUser.name,
-    avatar: (user as any)?.photoURL || mockUser.avatar || "/placeholder.svg",
-    rating: mockUser.rating,
-    reviewCount: mockUser.reviewCount,
-    joinedDate: mockUser.joinedDate,
+    name: user?.displayName || "匿名ユーザー",
+    avatar: (user as any)?.photoURL || "/placeholder-user.jpg",
+    rating: averageRating,
+    reviewCount: reviewCount,
+    joinedDate: joinedDate,
   }
 
   return (
