@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Star, Package, ShoppingBag, Calendar, Heart } from "lucide-react"
+import { Star, Package, ShoppingBag, Calendar, Heart, Pencil } from "lucide-react"
 import { ProductCard } from "@/components/product-card"
 import { AuctionCard } from "@/components/auction-card"
 import Link from "next/link"
@@ -153,13 +153,16 @@ export default function ProfilePage() {
                   ) : userProducts.length > 0 ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                       {userProducts.map((product: any) => (
-                        <Link
-                          key={product.id}
-                          href={`/products/${product.id}`}
-                          style={{ display: "block", height: "100%" }}
-                        >
-                          <ProductCard product={product} />
-                        </Link>
+                        <div key={product.id} className="relative group">
+                          <Link
+                            href={`/products/${product.id}/edit`}
+                            style={{ display: "block", height: "100%" }}
+                            aria-label="商品を編集"
+                            title="商品を編集"
+                          >
+                            <ProductCard product={product} />
+                          </Link>
+                        </div>
                       ))}
                     </div>
                   ) : (
@@ -180,13 +183,16 @@ export default function ProfilePage() {
                   ) : userAuctions.length > 0 ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                       {userAuctions.map((auction) => (
-                        <Link
-                          key={auction.id}
-                          href={`/auctions/${auction.id}`}
-                          style={{ display: "block", height: "100%" }}
-                        >
-                          <AuctionCard auction={auction} />
-                        </Link>
+                        <div key={auction.id} className="relative group">
+                          <Link
+                            href={`/auctions/${auction.id}/edit`}
+                            style={{ display: "block", height: "100%" }}
+                            aria-label="オークションを編集"
+                            title="オークションを編集"
+                          >
+                            <AuctionCard auction={auction} />
+                          </Link>
+                        </div>
                       ))}
                     </div>
                   ) : (
