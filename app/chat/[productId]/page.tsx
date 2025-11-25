@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { Send, Check } from "lucide-react"
+import { Send, Check, X } from "lucide-react"
 import { useAuth } from "@/components/auth-provider"
 import { useChat } from "@/hooks/useChat"
 import { doc, getDoc, setDoc, updateDoc, onSnapshot, collection, addDoc, deleteDoc, getDocs, query, where, increment } from "firebase/firestore"
@@ -117,7 +117,7 @@ function ChatPageContent({ params }: { params: Promise<{ productId: string }> })
   const { user } = useAuth()
 
     // useChat: products/{productId}/chat または auctions/{auctionId}/chat サブコレクションを購読
-    const { messages: chatMessages, loading: chatLoading, error: chatError, sendMessage, chatUsers } = useChat(
+    const { messages: chatMessages, loading: chatLoading, error: chatError, sendMessage, chatUsers, deleteChat } = useChat(
       itemType === 'auction' ? 'auctions' : 'products',
       productId
     )
@@ -179,6 +179,47 @@ function ChatPageContent({ params }: { params: Promise<{ productId: string }> })
   const isBuyer = user ? !isSeller && user.uid === (buyerIdFromMeta ?? "") : false
   const [rating, setRating] = useState<number | null>(null)
   const [comment, setComment] = useState("")
+  const [isCancelling, setIsCancelling] = useState(false)
+
+  // 取引中止処理（出品者のみ実行可能）
+  const handleCancelTransaction = async () => {
+    if (!user || !product || !isSeller) return
+    
+    const confirmed = window.confirm(
+      "取引を中止しますか?\n\n" +
+      "この操作により以下が実行されます:\n" +
+      "・商品が取引前の状態に戻ります\n" +
+      "・チャット履歴が削除されます\n" +
+      "・双方が商品詳細ページにリダイレクトされます"
+    )
+    
+    if (!confirmed) return
+    
+    setIsCancelling(true)
+    
+    try {
+      // 1. 商品のis_tradingをfalseに戻す
+      const productRef = doc(db, collectionName, productId)
+      await updateDoc(productRef, {
+        is_trading: false,
+      })
+      console.log("✅ 商品を取引前の状態に戻しました")
+      
+      // 2. 商品詳細ページにリダイレクト（チャット削除前に実行）
+      const detailPath = itemType === 'auction' ? `/auctions/${productId}` : `/products/${productId}`
+      console.log(`🔄 商品詳細ページへリダイレクト: ${detailPath}`)
+      router.push(detailPath)
+      
+      // 3. チャットデータを削除（最後に実行）
+      await deleteChat()
+      console.log("✅ 取引中止処理が完了しました")
+      
+    } catch (e) {
+      console.error("❌ 取引中止処理に失敗しました:", e)
+      alert("取引中止処理に失敗しました。もう一度お試しください。")
+      setIsCancelling(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -565,6 +606,19 @@ function ChatPageContent({ params }: { params: Promise<{ productId: string }> })
                     <Check className="h-4 w-4 mr-2" />
                     {hasAgreed ? "同意済み（相手の同意待ち）" : "同意する"}
                   </Button>
+                  
+                  {/* 出品者のみに取引中止ボタンを表示 */}
+                  {isSeller && (
+                    <Button 
+                      onClick={handleCancelTransaction} 
+                      disabled={isCancelling}
+                      variant="destructive" 
+                      className="w-full"
+                    >
+                      <X className="h-4 w-4 mr-2" />
+                      {isCancelling ? "中止処理中..." : "取引を中止"}
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>

@@ -13,6 +13,7 @@ import {
   QuerySnapshot,
   getDoc,
   getDocs,
+  deleteDoc,
 } from "firebase/firestore"
 import { db } from "@/lib/firebaseConfig"
 import { create } from "domain"
@@ -289,5 +290,22 @@ export function useChat(pathRoot: "products" | "auctions", id: string) {
     }
   }
 
-  return { messages, loading, error, sendMessage, chatUsers }
+  /**
+   * チャットデータを削除する関数
+   * 取引中止時などに使用
+   */
+  async function deleteChat() {
+    try {
+      console.log("🧹 チャットデータ削除開始")
+      const chatCol = collection(db, pathRoot, id, "chat")
+      const chatSnap = await getDocs(chatCol)
+      await Promise.all(chatSnap.docs.map((d) => d.ref && deleteDoc(d.ref)))
+      console.log(`✅ チャットデータ削除完了: ${chatSnap.size}件`)
+    } catch (e: any) {
+      console.error("❌ チャットデータ削除エラー:", e)
+      throw e
+    }
+  }
+
+  return { messages, loading, error, sendMessage, chatUsers, deleteChat }
 }
