@@ -204,6 +204,11 @@ export default function EditAuctionPage({ params }: { params: Promise<{ id: stri
     notFound()
   }
 
+  // 取引中判定（auction取得後に判定）
+  const isTrading = auction && [
+    "sold", "negotiating", "agreed", "completed"
+  ].includes(auction.status)
+
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-background">
@@ -218,7 +223,13 @@ export default function EditAuctionPage({ params }: { params: Promise<{ id: stri
               </Button>
               <h1 className="text-2xl font-bold">オークションを編集</h1>
             </div>
-
+            {(hasBids || isEnded || isTrading) && (
+              <div className="mb-6 p-4 bg-yellow-100 text-yellow-800 rounded">
+                {isTrading
+                  ? "このオークションは取引中のため編集できません。"
+                  : "入札がある、または終了済みのため編集できません"}
+              </div>
+            )}
             <form onSubmit={handleUpdate}>
               <Card className="mb-6">
                 <CardHeader>
@@ -231,14 +242,10 @@ export default function EditAuctionPage({ params }: { params: Promise<{ id: stri
                       id="title"
                       value={formData.title}
                       onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                      disabled={hasBids || isEnded}
+                      disabled={hasBids || isEnded || isTrading}
                       required
                     />
-                    {(hasBids || isEnded) && (
-                      <p className="text-xs text-muted-foreground">入札がある、または終了済みのため編集できません</p>
-                    )}
                   </div>
-
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="startingPrice">開始価格（円）</Label>
@@ -247,7 +254,7 @@ export default function EditAuctionPage({ params }: { params: Promise<{ id: stri
                         type="number"
                         value={formData.startingPrice}
                         onChange={(e) => setFormData({ ...formData, startingPrice: Number(e.target.value) })}
-                        disabled={hasBids || isEnded}
+                        disabled={hasBids || isEnded || isTrading}
                         required
                       />
                     </div>
@@ -261,11 +268,10 @@ export default function EditAuctionPage({ params }: { params: Promise<{ id: stri
                           const v = e.target.value
                           setFormData({ ...formData, buyNowPrice: v === "" ? undefined : Number(v) })
                         }}
-                        disabled={hasBids || isEnded}
+                        disabled={hasBids || isEnded || isTrading}
                       />
                     </div>
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="endTime">終了日時</Label>
                     <Input
@@ -273,16 +279,16 @@ export default function EditAuctionPage({ params }: { params: Promise<{ id: stri
                       type="datetime-local"
                       value={formData.endTime}
                       onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-                      disabled={hasBids || isEnded}
+                      disabled={hasBids || isEnded || isTrading}
                       required
                     />
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="condition">商品の状態</Label>
                     <Select
                       value={formData.condition}
                       onValueChange={(value) => setFormData({ ...formData, condition: value })}
+                      disabled={hasBids || isEnded || isTrading}
                     >
                       <SelectTrigger id="condition">
                         <SelectValue />
@@ -296,7 +302,6 @@ export default function EditAuctionPage({ params }: { params: Promise<{ id: stri
                       </SelectContent>
                     </Select>
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="description">商品の説明</Label>
                     <Textarea
@@ -305,9 +310,9 @@ export default function EditAuctionPage({ params }: { params: Promise<{ id: stri
                       value={formData.description}
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                       required
+                      disabled={hasBids || isEnded || isTrading}
                     />
                   </div>
-
                   <div className="space-y-2">
                     <Label>既存の商品画像</Label>
                     {existingImages.length > 0 && (
@@ -327,6 +332,7 @@ export default function EditAuctionPage({ params }: { params: Promise<{ id: stri
                               onClick={() => {
                                 setExistingImages(existingImages.filter((_, i) => i !== index))
                               }}
+                              disabled={hasBids || isEnded || isTrading}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -338,13 +344,13 @@ export default function EditAuctionPage({ params }: { params: Promise<{ id: stri
                     <ImageUpload
                       onImagesChange={(files) => setFormData({ ...formData, images: files })}
                       maxImages={Math.max(0, 5 - existingImages.length)}
+                      disabled={hasBids || isEnded || isTrading}
                     />
                   </div>
                 </CardContent>
               </Card>
-
               <div className="flex flex-col sm:flex-row gap-3">
-                <Button type="submit" className="flex-1" disabled={isSubmitting}>
+                <Button type="submit" className="flex-1" disabled={isSubmitting || hasBids || isEnded || isTrading}>
                   {isSubmitting ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -365,7 +371,7 @@ export default function EditAuctionPage({ params }: { params: Promise<{ id: stri
                   variant="destructive"
                   size="icon"
                   onClick={handleDelete}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || hasBids || isEnded || isTrading}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>

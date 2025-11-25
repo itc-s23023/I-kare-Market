@@ -8,20 +8,21 @@ import { Upload, X } from "lucide-react"
 interface ImageUploadProps {
   onImagesChange: (files: File[]) => void
   maxImages?: number
+  disabled?: boolean
 }
 
-export function ImageUpload({ onImagesChange, maxImages = 5 }: ImageUploadProps) {
+export function ImageUpload({ onImagesChange, maxImages = 5, disabled = false }: ImageUploadProps) {
   const [images, setImages] = useState<File[]>([])
   const [previews, setPreviews] = useState<string[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (disabled) return
     const files = event.target.files
     if (!files) return
 
     const newFiles = Array.from(files).slice(0, maxImages - images.length)
     const updatedImages = [...images, ...newFiles]
-    
 
     const newPreviews = newFiles.map(file => URL.createObjectURL(file))
     const updatedPreviews = [...previews, ...newPreviews]
@@ -30,25 +31,23 @@ export function ImageUpload({ onImagesChange, maxImages = 5 }: ImageUploadProps)
     setPreviews(updatedPreviews)
     onImagesChange(updatedImages)
 
-
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
   }
 
   const removeImage = (index: number) => {
- 
+    if (disabled) return
     URL.revokeObjectURL(previews[index])
-    
     const updatedImages = images.filter((_, i) => i !== index)
     const updatedPreviews = previews.filter((_, i) => i !== index)
-    
     setImages(updatedImages)
     setPreviews(updatedPreviews)
     onImagesChange(updatedImages)
   }
 
   const handleUploadClick = () => {
+    if (disabled) return
     fileInputRef.current?.click()
   }
 
@@ -72,6 +71,7 @@ export function ImageUpload({ onImagesChange, maxImages = 5 }: ImageUploadProps)
                 size="icon"
                 className="absolute top-2 right-2 h-6 w-6"
                 onClick={() => removeImage(index)}
+                disabled={disabled}
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -82,6 +82,8 @@ export function ImageUpload({ onImagesChange, maxImages = 5 }: ImageUploadProps)
               type="button"
               onClick={handleUploadClick}
               className="aspect-square rounded-lg border-2 border-dashed border-muted-foreground/25 hover:border-muted-foreground/50 flex flex-col items-center justify-center gap-2 transition-colors"
+              disabled={disabled}
+              style={disabled ? { opacity: 0.5, pointerEvents: "none" } : {}}
             >
               <Upload className="h-6 w-6 text-muted-foreground" />
               <span className="text-xs text-muted-foreground">画像を追加</span>
@@ -95,6 +97,7 @@ export function ImageUpload({ onImagesChange, maxImages = 5 }: ImageUploadProps)
           multiple
           onChange={handleFileSelect}
           className="hidden"
+          disabled={disabled}
         />
         <p className="text-sm text-muted-foreground">
           最大{maxImages}枚まで画像をアップロードできます ({images.length}/{maxImages})
