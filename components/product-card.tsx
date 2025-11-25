@@ -5,6 +5,7 @@ import Image from "next/image"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import ConfirmDialog from "@/components/confirm-dialog"
 import { Heart } from "lucide-react"
 import { useLikes } from "@/hooks/uselike"
 
@@ -13,6 +14,9 @@ import type { Product } from "@/hooks/useProducts"
 interface ProductCardProps {
   product: Product
   showActions?: boolean
+  onEdit?: (product: Product) => void
+  onDelete?: (product: Product) => Promise<void> | void
+  deleting?: boolean
 }
 
 const conditionLabels = {
@@ -22,7 +26,7 @@ const conditionLabels = {
   fair: "可",
 } as const
 
-export function ProductCard({ product, showActions = false }: ProductCardProps) {
+export function ProductCard({ product, showActions = false, onEdit, onDelete, deleting }: ProductCardProps) {
   const { isLiked, toggleLike } = useLikes()
 
   const handleLikeClick = (e: React.MouseEvent) => {
@@ -131,12 +135,38 @@ export function ProductCard({ product, showActions = false }: ProductCardProps) 
         
         {showActions && (
           <div className="flex gap-2">
-            <Button variant="outline" size="sm">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onEdit?.(product)}
+              disabled={deleting}
+            >
               編集
             </Button>
-            <Button variant="destructive" size="sm">
-              削除
-            </Button>
+            {onDelete ? (
+              <ConfirmDialog
+                trigger={
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    disabled={deleting}
+                  >
+                    削除
+                  </Button>
+                }
+                title="商品を削除しますか？"
+                description={"この操作は取り消せません。"}
+                confirmLabel={deleting ? "削除中..." : "削除を確定"}
+                confirmVariant="destructive"
+                onConfirm={() => onDelete(product)}
+                confirmDisabled={deleting}
+                loading={deleting}
+              />
+            ) : (
+              <Button variant="destructive" size="sm" disabled>
+                削除
+              </Button>
+            )}
           </div>
         )}
       </CardFooter>

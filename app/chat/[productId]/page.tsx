@@ -3,6 +3,7 @@
 import { use, useState, useRef, useEffect, Suspense } from "react"
 import { Header } from "@/components/header"
 import { Button } from "@/components/ui/button"
+import ConfirmDialog from "@/components/confirm-dialog"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -184,16 +185,6 @@ function ChatPageContent({ params }: { params: Promise<{ productId: string }> })
   // 取引中止処理（出品者のみ実行可能）
   const handleCancelTransaction = async () => {
     if (!user || !product || !isSeller) return
-    
-    const confirmed = window.confirm(
-      "取引を中止しますか?\n\n" +
-      "この操作により以下が実行されます:\n" +
-      "・商品が取引前の状態に戻ります\n" +
-      "・チャット履歴が削除されます\n" +
-      "・双方が商品詳細ページにリダイレクトされます"
-    )
-    
-    if (!confirmed) return
     
     setIsCancelling(true)
     
@@ -602,22 +593,55 @@ function ChatPageContent({ params }: { params: Promise<{ productId: string }> })
                   取引内容について双方が合意したら、「同意する」ボタンを押してください。双方の同意が確認されると評価ステップへ進みます。
                 </p>
                 <div className="flex flex-col gap-2">
-                  <Button onClick={handleAgree} disabled={hasAgreed} className="w-full">
-                    <Check className="h-4 w-4 mr-2" />
-                    {hasAgreed ? "同意済み（相手の同意待ち）" : "同意する"}
-                  </Button>
+                  <ConfirmDialog
+                    trigger={
+                      <Button disabled={hasAgreed} className="w-full">
+                        <Check className="h-4 w-4 mr-2" />
+                        {hasAgreed ? "同意済み（相手の同意待ち）" : "同意する"}
+                      </Button>
+                    }
+                    title="取引内容に同意しますか？"
+                    description={(
+                      <>
+                        この商品の取引条件に合意します。<br />
+                        双方が同意すると評価ステップへ進めます。<br />
+                        内容に問題がないか再度ご確認ください。
+                      </>
+                    )}
+                    confirmLabel="同意を確定"
+                    onConfirm={handleAgree}
+                    confirmDisabled={hasAgreed}
+                  />
                   
                   {/* 出品者のみに取引中止ボタンを表示 */}
                   {isSeller && (
-                    <Button 
-                      onClick={handleCancelTransaction} 
-                      disabled={isCancelling}
-                      variant="destructive" 
-                      className="w-full"
-                    >
-                      <X className="h-4 w-4 mr-2" />
-                      {isCancelling ? "中止処理中..." : "取引を中止"}
-                    </Button>
+                    <ConfirmDialog
+                      trigger={
+                        <Button 
+                          disabled={isCancelling}
+                          variant="destructive" 
+                          className="w-full"
+                        >
+                          <X className="h-4 w-4 mr-2" />
+                          {isCancelling ? "中止処理中..." : "取引を中止"}
+                        </Button>
+                      }
+                      title="取引を中止しますか？"
+                      description={(
+                        <>
+                          以下の処理が実行されます:<br />
+                          ・商品が取引前の状態に戻ります（再度別ユーザーが交渉可能）<br />
+                          ・チャット履歴が削除されます<br />
+                          ・商品詳細ページへ遷移します<br />
+                          この操作は取り消せません。よろしいですか？
+                        </>
+                      )}
+                      confirmLabel="中止を確定"
+                      confirmVariant="destructive"
+                      onConfirm={handleCancelTransaction}
+                      confirmDisabled={isCancelling}
+                      loading={isCancelling}
+                    />
                   )}
                 </div>
               </CardContent>

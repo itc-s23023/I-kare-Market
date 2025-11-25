@@ -3,6 +3,7 @@
 import { use, useState, useEffect, useMemo } from "react"
 import { Header } from "@/components/header"
 import { Button } from "@/components/ui/button"
+import ConfirmDialog from "@/components/confirm-dialog"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -148,8 +149,6 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
 
   // 商品削除処理
   const handleDelete = async () => {
-    if (!confirm("本当にこの商品を削除しますか？")) return
-    
     setIsSubmitting(true)
     
     try {
@@ -332,15 +331,29 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                     商品ページを見る
                   </Link>
                 </Button>
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="icon"
-                  onClick={handleDelete}
-                  disabled={isSubmitting || isTrading}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                <ConfirmDialog
+                  trigger={
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      disabled={isSubmitting || isTrading}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  }
+                  title="商品を削除しますか？"
+                  description={(
+                    <>
+                      この操作は取り消せません。<br />
+                    </>
+                  )}
+                  confirmLabel="削除を確定"
+                  confirmVariant="destructive"
+                  onConfirm={handleDelete}
+                  confirmDisabled={isSubmitting || isTrading}
+                  loading={isSubmitting}
+                />
               </div>
             </form>
           </div>
