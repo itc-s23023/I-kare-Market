@@ -1,6 +1,6 @@
 "use client"
 
-import { use, useState, useEffect } from "react"
+import { use, useState, useEffect, useMemo } from "react"
 import { Header } from "@/components/header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -37,6 +37,12 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     images: [] as File[]
   })
   const [existingImages, setExistingImages] = useState<string[]>([])
+  // 取引中判定はuseMemoで厳密に
+  const isTrading = useMemo(() => {
+     return product && [
+       "reserved", "sold", "negotiating", "agreed", "completed"
+     ].includes(product.status);
+  }, [product]);
 
   // 商品データを取得
   useEffect(() => {
@@ -197,7 +203,6 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     <ProtectedRoute>
       <div className="min-h-screen bg-background">
         <Header />
-
         <main className="container mx-auto px-4 py-8">
           <div className="max-w-2xl mx-auto">
             <div className="flex items-center gap-4 mb-6">
@@ -208,7 +213,11 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
               </Button>
               <h1 className="text-2xl font-bold">商品を編集</h1>
             </div>
-
+            {isTrading && (
+              <div className="mb-6 p-4 bg-yellow-100 text-yellow-800 rounded">
+                この商品は取引中のため編集できません。
+              </div>
+            )}
             <form onSubmit={handleUpdate}>
               <Card className="mb-6">
                 <CardHeader>
@@ -217,30 +226,31 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                 <CardContent className="space-y-6">
                   <div className="space-y-2">
                     <Label htmlFor="productname">商品名</Label>
-                    <Input 
-                      id="productname" 
+                    <Input
+                      id="productname"
                       value={formData.productname}
                       onChange={(e) => setFormData({ ...formData, productname: e.target.value })}
                       required
+                      disabled={isTrading}
                     />
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="price">価格（円）</Label>
-                    <Input 
-                      id="price" 
-                      type="number" 
+                    <Input
+                      id="price"
+                      type="number"
                       value={formData.price}
                       onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
                       required
+                      disabled={isTrading}
                     />
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="condition">商品の状態</Label>
-                    <Select 
+                    <Select
                       value={formData.condition}
                       onValueChange={(value) => setFormData({ ...formData, condition: value })}
+                      disabled={isTrading}
                     >
                       <SelectTrigger id="condition">
                         <SelectValue />
@@ -254,18 +264,17 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                       </SelectContent>
                     </Select>
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="content">商品の説明</Label>
-                    <Textarea 
-                      id="content" 
-                      rows={6} 
+                    <Textarea
+                      id="content"
+                      rows={6}
                       value={formData.content}
                       onChange={(e) => setFormData({ ...formData, content: e.target.value })}
                       required
+                      disabled={isTrading}
                     />
                   </div>
-
                   <div className="space-y-2">
                     <Label>既存の商品画像</Label>
                     {existingImages.length > 0 && (
@@ -285,6 +294,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                               onClick={() => {
                                 setExistingImages(existingImages.filter((_, i) => i !== index))
                               }}
+                              disabled={isTrading}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -296,16 +306,16 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                     <ImageUpload
                       onImagesChange={(files) => setFormData({ ...formData, images: files })}
                       maxImages={5 - existingImages.length}
+                      disabled={isTrading}
                     />
                   </div>
                 </CardContent>
               </Card>
-
               <div className="flex flex-col sm:flex-row gap-3">
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   className="flex-1"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || isTrading}
                 >
                   {isSubmitting ? (
                     <>
@@ -322,12 +332,12 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                     商品ページを見る
                   </Link>
                 </Button>
-                <Button 
+                <Button
                   type="button"
-                  variant="destructive" 
+                  variant="destructive"
                   size="icon"
                   onClick={handleDelete}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || isTrading}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
