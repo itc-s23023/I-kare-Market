@@ -41,6 +41,7 @@ export default function LoginPage() {
           transactions: 0,
           Sales: 0,
           evalution: 0,
+          evaluationCount: 0,
           likeProductId: []
         })
         console.log("ユーザー新規登録: FirestoreにjoinedDateを保存")
