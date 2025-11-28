@@ -363,10 +363,41 @@ function ChatPageContent({ params }: { params: Promise<{ productId: string }> })
         const sellerRef = doc(db, "users", product.sellerId)
         const sellerSnap = await getDoc(sellerRef)
         if (sellerSnap.exists()) {
-          const data = sellerSnap.data() as { evalution?: unknown }
-          const prev = typeof data.evalution === "number" ? data.evalution : null
-          const next = (prev == null || prev === 0) ? rating : (rating + prev) / 2
-          await updateDoc(sellerRef, { evalution: next })
+          const data = sellerSnap.data() as { evalution?: unknown; evaluationCount?: unknown }
+          
+          // 前回までの平均評価と評価数を取得
+          const prevAverage = typeof data.evalution === "number" ? data.evalution : 0
+          let prevCount = typeof data.evaluationCount === "number" ? data.evaluationCount : 0
+          
+          // 🔧 既存ユーザー対応: evaluationCountが0だが評価平均が存在する場合、
+          // evaluationsサブコレクションから実際の評価件数を取得
+          if (prevCount === 0 && prevAverage > 0) {
+            try {
+              const evalsCol = collection(db, "users", product.sellerId, "evaluations")
+              const evalsSnap = await getDocs(evalsCol)
+              prevCount = evalsSnap.size
+              console.log(`⚠️ evaluationCount未設定ユーザー検出。サブコレクションから件数取得: ${prevCount}件`)
+            } catch (e) {
+              console.error("評価件数の取得に失敗。初回評価として扱います", e)
+              prevCount = 0
+            }
+          }
+          
+          // 新しい平均を計算: (前回までの合計 + 今回の評価) / 新しい評価数
+          const totalScore = (prevAverage * prevCount) + rating
+          const newCount = prevCount + 1
+          const newAverage = totalScore / newCount
+          
+          // 小数点第1位まで丸める
+          const roundedAverage = Math.round(newAverage * 10) / 10
+          
+          // Firestoreを更新
+          await updateDoc(sellerRef, { 
+            evalution: roundedAverage,
+            evaluationCount: newCount
+          })
+          
+          console.log(`✅ 評価を更新: ${prevAverage}(${prevCount}件) → ${roundedAverage}(${newCount}件)`)
         }
       } catch (e) {
         console.error("ユーザー評価の再計算に失敗しました", e)
