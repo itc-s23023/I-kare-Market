@@ -23,8 +23,15 @@ export default function LoginPage() {
 
   const handleGoogleSignIn = async () => {
     try {
+      // アカウント選択を毎回強制
+      googleProvider.setCustomParameters({ prompt: "select_account" })
       const result = await signInWithPopup(auth, googleProvider)
-      console.log("ログイン成功:", result.user)
+      const email = result.user.email || ""
+      if (!email.endsWith("@std.it-college.ac.jp")) {
+        await signOut(auth)
+        alert("学校のメールアドレス（@std.it-college.ac.jp）でのみログインできます。\n別のアカウントで再度お試しください。")
+        return
+      }
       // Firestoreにユーザー情報を保存
       const { db } = await import("@/lib/firebaseConfig")
       const { setDoc, doc, getDoc } = await import("firebase/firestore")
@@ -122,6 +129,9 @@ export default function LoginPage() {
             </div>
           ) : (
             <div className="space-y-4">
+              <div className="text-center text-sm text-red-600 font-semibold">
+                ※必ず学校のGoogleアカウント（@std.it-college.ac.jp）でログインしてください
+              </div>
               <Button
                 onClick={handleGoogleSignIn}
                 className="w-full flex items-center justify-center gap-2 bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
