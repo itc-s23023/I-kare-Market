@@ -151,7 +151,7 @@ export default function ProfilePage() {
                   ) : productsError ? (
                     <div className="text-center py-12 text-red-500">{productsError}</div>
                   ) : userProducts.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
                       {userProducts.map((product: any) => (
                         <div key={product.id} className="relative group">
                           <Link
@@ -181,7 +181,7 @@ export default function ProfilePage() {
                   ) : auctionsError ? (
                     <div className="text-center py-12 text-red-500">{auctionsError}</div>
                   ) : userAuctions.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
                       {userAuctions.map((auction) => (
                         <div key={auction.id} className="relative group">
                           <Link
@@ -284,7 +284,7 @@ export default function ProfilePage() {
 
                   <TabsContent value="products">
                     {likedProducts.length > 0 ? (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
                         {likedProducts.map((product) => (
                           <Link
                             key={product.id}
@@ -308,7 +308,7 @@ export default function ProfilePage() {
 
                   <TabsContent value="auctions">
                     {likedAuctions.length > 0 ? (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
                         {likedAuctions.map((auction) => (
                           <Link
                             key={auction.id}
