@@ -421,15 +421,16 @@ function ChatPageContent({ params }: { params: Promise<{ productId: string }> })
         console.error("❌ purchases への購入履歴保存に失敗", e)
       }
 
-      // 売り手の総売上を更新
+      // 売り手の総売上と取引件数を更新
       try {
         const sellerRef = doc(db, "users", product.sellerId)
         await updateDoc(sellerRef, {
-          Sales: increment(product.price || 0)
+          Sales: increment(product.price || 0),
+          transactions: increment(1)
         })
-        console.log(`✅ 売り手(${product.sellerId})の総売上を更新: +¥${product.price}`)
+        console.log(`✅ 売り手(${product.sellerId})の総売上を更新: +¥${product.price}, 取引件数: +1`)
       } catch (e) {
-        console.error("❌ 売り手の総売上更新に失敗", e)
+        console.error("❌ 売り手の総売上・取引件数更新に失敗", e)
       }
       // サブコレクション(chat)削除
       try {
