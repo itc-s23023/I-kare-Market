@@ -95,12 +95,12 @@ export default function AuctionsPage() {
                 </div>
               )}
             </div>
-            <Button asChild className="shrink-0">
+            {/* <Button asChild className="shrink-0">
               <Link href="/auctions/sell">
                 <Plus className="w-4 h-4 mr-2" />
                 オークション出品
               </Link>
-            </Button>
+            </Button> */}
           </div>
 
           {loading && (
