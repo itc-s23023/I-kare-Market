@@ -258,16 +258,34 @@ export default function ProfilePage() {
                           </td>
                           <td className="px-6 py-4 flex items-center gap-2">
                             <div className="flex items-center gap-2">
-                              <Avatar className="h-7 w-7">
-                                <AvatarImage src={purchase.sellerAvatar || "/seller-avatar.png"} />
-                                <AvatarFallback>{(purchase.sellerName || "-").charAt(0)}</AvatarFallback>
-                              </Avatar>
                               {purchase.sellerId ? (
-                                <Link href={`/users/${purchase.sellerId}`} className="hover:underline text-primary">
-                                  {purchase.sellerName || "---"}
-                                </Link>
+                                <>
+                                  {/* スマホではアイコンのみ。アイコンをタップでユーザーページへ */}
+                                  <Link
+                                    href={`/users/${purchase.sellerId}`}
+                                    className="block"
+                                    aria-label={`${purchase.sellerName || "ユーザー"}のページ`}
+                                  >
+                                    <Avatar className="h-7 w-7 hover:ring-2 ring-primary transition">
+                                      <AvatarImage src={purchase.sellerAvatar || "/seller-avatar.png"} />
+                                      <AvatarFallback>{(purchase.sellerName || "-").charAt(0)}</AvatarFallback>
+                                    </Avatar>
+                                  </Link>
+                                  <Link
+                                    href={`/users/${purchase.sellerId}`}
+                                    className="hidden sm:inline hover:underline text-primary"
+                                  >
+                                    {purchase.sellerName || "---"}
+                                  </Link>
+                                </>
                               ) : (
-                                <span>{purchase.sellerName || "---"}</span>
+                                <>
+                                  <Avatar className="h-7 w-7">
+                                    <AvatarImage src={purchase.sellerAvatar || "/seller-avatar.png"} />
+                                    <AvatarFallback>{(purchase.sellerName || "-").charAt(0)}</AvatarFallback>
+                                  </Avatar>
+                                  <span className="hidden sm:inline">{purchase.sellerName || "---"}</span>
+                                </>
                               )}
                             </div>
                           </td>
