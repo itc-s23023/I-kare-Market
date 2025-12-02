@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Star, Package, ShoppingBag, Calendar, Heart, Pencil } from "lucide-react"
+import { Star, Package, History, Calendar, Heart, Pencil } from "lucide-react"
 import { ProductCard } from "@/components/product-card"
 import { AuctionCard } from "@/components/auction-card"
 import Link from "next/link"
@@ -121,7 +121,7 @@ export default function ProfilePage() {
                 出品中
               </TabsTrigger>
               <TabsTrigger value="buying">
-                <ShoppingBag className="h-4 w-4 mr-2" />
+                <History className="h-4 w-4 mr-2" />
                 購入履歴
               </TabsTrigger>
               <TabsTrigger value="likes">
