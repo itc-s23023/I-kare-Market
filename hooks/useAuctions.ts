@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { collection, addDoc, getDocs, doc, getDoc, updateDoc, query, where, orderBy, deleteDoc, writeBatch, serverTimestamp, setDoc } from "firebase/firestore"
+import { collection, addDoc, getDocs, doc, getDoc, updateDoc, query, where, orderBy, deleteDoc, writeBatch, serverTimestamp, setDoc, onSnapshot } from "firebase/firestore"
 import { db } from "@/lib/firebaseConfig"
 import { useAuth } from "@/components/auth-provider"
 
@@ -154,16 +154,18 @@ export function useAuctions() {
   }
 
   useEffect(() => {
-    const fetchAuctions = async () => {
-      try {
-        console.log("🔄 オークションデータ取得開始")
+    console.log("🔄 オークションリアルタイム監視開始")
+    
+    // Firestoreのリアルタイム監視
+    const unsubscribe = onSnapshot(
+      collection(db, "auctions"),
+      (snapshot) => {
+        console.log("📡 オークションデータ変更検知:", snapshot.size, "件")
         
-        const querySnapshot = await getDocs(collection(db, "auctions"))
         const auctionsData: Auction[] = []
         
-        querySnapshot.forEach((doc) => {
+        snapshot.forEach((doc) => {
           const data = doc.data()
-          console.log("📄 取得したオークション:", doc.id, data)
           
           auctionsData.push({
             id: doc.id,
@@ -184,21 +186,62 @@ export function useAuctions() {
           })
         })
 
-        // 終了日時でソート（新しい順）
+        // 作成日時でソート（新しい順）
         auctionsData.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 
-        console.log(`✅ オークションデータ取得完了: ${auctionsData.length}件`)
+        console.log(`✅ オークションリアルタイム更新完了: ${auctionsData.length}件`)
         setAuctions(auctionsData)
         setError(null)
-      } catch (error: any) {
-        console.error("❌ オークションデータ取得エラー:", error)
-        setError(`オークションデータの取得に失敗しました: ${error.message}`)
-      } finally {
         setLoading(false)
-      }
-    }
+      },
+      (error) => {
+        console.error("❌ オークションリアルタイム監視エラー:", error)
+        // エラー時は従来の方法にフォールバック
+        const fetchAuctions = async () => {
+          try {
+            const querySnapshot = await getDocs(collection(db, "auctions"))
+            const auctionsData: Auction[] = []
+            
+            querySnapshot.forEach((doc) => {
+              const data = doc.data()
+              auctionsData.push({
+                id: doc.id,
+                title: String(data.title || "タイトルなし"),
+                description: String(data.description || ""),
+                images: Array.isArray(data.images) ? data.images : [],
+                startingPrice: Number(data.startingPrice) || 0,
+                currentBid: Number(data.currentBid) || Number(data.startingPrice) || 0,
+                buyNowPrice: data.buyNowPrice ? Number(data.buyNowPrice) : undefined,
+                bidCount: Number(data.bidCount) || 0,
+                endTime: String(data.endTime || new Date().toISOString()),
+                status: String(data.status || "active") as "active" | "ended",
+                sellerId: String(data.sellerId || ""),
+                sellerName: String(data.sellerName || "匿名ユーザー"),
+                category: data.category ? String(data.category) : undefined,
+                condition: data.condition ? String(data.condition) : undefined,
+                createdAt: String(data.createdAt || new Date().toISOString())
+              })
+            })
 
-    fetchAuctions()
+            auctionsData.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+            setAuctions(auctionsData)
+            setError(null)
+          } catch (fallbackError: any) {
+            setError(`オークションデータの取得に失敗しました: ${fallbackError.message}`)
+          } finally {
+            setLoading(false)
+          }
+        }
+        
+        fetchAuctions()
+      }
+    )
+
+    // クリーンアップ関数
+    return () => {
+      console.log("🔌 オークションリアルタイム監視停止")
+      unsubscribe()
+    }
   }, [])
 
   // オークション終了チェックと通知送信
@@ -371,16 +414,16 @@ export function useAuction(id: string) {
   useEffect(() => {
     if (!id) return
 
-    const fetchAuction = async () => {
-      try {
-        console.log("🔄 オークション詳細取得開始:", id)
-        
-        const docRef = doc(db, "auctions", id)
-        const docSnap = await getDoc(docRef)
-        
+    console.log("🔄 オークション詳細リアルタイム監視開始:", id)
+    
+    // Firestoreのリアルタイム監視
+    const docRef = doc(db, "auctions", id)
+    const unsubscribe = onSnapshot(
+      docRef,
+      (docSnap) => {
         if (docSnap.exists()) {
           const data = docSnap.data()
-          console.log("📄 取得したオークション詳細:", data)
+          console.log("📡 オークション詳細変更検知:", id)
           
           const auctionData: Auction = {
             id: docSnap.id,
@@ -401,20 +444,63 @@ export function useAuction(id: string) {
           }
           
           setAuction(auctionData)
-          console.log("✅ オークション詳細取得完了")
+          setError(null)
+          console.log("✅ オークション詳細リアルタイム更新完了")
         } else {
           console.log("❌ オークションが見つかりません")
           setError("オークションが見つかりません")
         }
-      } catch (error: any) {
-        console.error("❌ オークション詳細取得エラー:", error)
-        setError(`オークション詳細の取得に失敗しました: ${error.message}`)
-      } finally {
         setLoading(false)
+      },
+      (error) => {
+        console.error("❌ オークション詳細リアルタイム監視エラー:", error)
+        // エラー時は従来の方法にフォールバック
+        const fetchAuction = async () => {
+          try {
+            const docRef = doc(db, "auctions", id)
+            const docSnap = await getDoc(docRef)
+            
+            if (docSnap.exists()) {
+              const data = docSnap.data()
+              const auctionData: Auction = {
+                id: docSnap.id,
+                title: String(data.title || "タイトルなし"),
+                description: String(data.description || ""),
+                images: Array.isArray(data.images) ? data.images : [],
+                startingPrice: Number(data.startingPrice) || 0,
+                currentBid: Number(data.currentBid) || Number(data.startingPrice) || 0,
+                buyNowPrice: data.buyNowPrice ? Number(data.buyNowPrice) : undefined,
+                bidCount: Number(data.bidCount) || 0,
+                endTime: String(data.endTime || new Date().toISOString()),
+                status: String(data.status || "active") as "active" | "ended",
+                sellerId: String(data.sellerId || ""),
+                sellerName: String(data.sellerName || "匿名ユーザー"),
+                category: data.category ? String(data.category) : undefined,
+                condition: data.condition ? String(data.condition) : undefined,
+                createdAt: String(data.createdAt || new Date().toISOString())
+              }
+              
+              setAuction(auctionData)
+              setError(null)
+            } else {
+              setError("オークションが見つかりません")
+            }
+          } catch (fallbackError: any) {
+            setError(`オークション詳細の取得に失敗しました: ${fallbackError.message}`)
+          } finally {
+            setLoading(false)
+          }
+        }
+        
+        fetchAuction()
       }
-    }
+    )
 
-    fetchAuction()
+    // クリーンアップ関数
+    return () => {
+      console.log("🔌 オークション詳細リアルタイム監視停止:", id)
+      unsubscribe()
+    }
   }, [id])
 
   return { auction, loading, error }
