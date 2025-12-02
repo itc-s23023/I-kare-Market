@@ -9,7 +9,7 @@ import { Star, Package, History, Calendar, Heart, Pencil } from "lucide-react"
 import { ProductCard } from "@/components/product-card"
 import { AuctionCard } from "@/components/auction-card"
 import Link from "next/link"
-import { useMemo } from "react"
+import { useMemo, useState, useEffect } from "react"
 
 import { useProducts } from "@/hooks/useProducts"
 import { usePurchaseHistory } from "@/hooks/usePurchase_history"
@@ -47,6 +47,13 @@ export default function ProfilePage() {
   } = useAuctions()
   const { evaluations, loading: evaluationsLoading, error: evaluationsError } = useEvaluations()
 
+  // 取引履歴ページネーション制御
+  const [historyPage, setHistoryPage] = useState(1)
+  useEffect(() => {
+    // データ件数が変わったら1ページ目に戻す
+    setHistoryPage(1)
+  }, [purchaseHistory.length])
+
   // ユーザーが出品したオークション商品をフィルタリング（アクティブなもののみ）
   const userAuctions = allAuctions.filter((auction) => 
     auction.sellerId === user?.uid && auction.status === "active"
@@ -79,6 +86,14 @@ export default function ProfilePage() {
     reviewCount: reviewCount,
     joinedDate: joinedDate,
   }
+
+  // 取引履歴のページネーション用の計算
+  const HISTORY_PAGE_SIZE = 5
+  const totalHistoryPages = Math.max(1, Math.ceil((purchaseHistory?.length || 0) / HISTORY_PAGE_SIZE))
+  const safeHistoryPage = Math.min(historyPage, totalHistoryPages)
+  const historyStart = (safeHistoryPage - 1) * HISTORY_PAGE_SIZE
+  const historyEnd = Math.min(historyStart + HISTORY_PAGE_SIZE, purchaseHistory?.length || 0)
+  const paginatedHistory = (purchaseHistory || []).slice(historyStart, historyEnd)
 
   return (
     <ProtectedRoute>
@@ -224,10 +239,10 @@ export default function ProfilePage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {purchaseHistory.map((purchase: any, idx: number, arr: any[]) => (
+                      {paginatedHistory.map((purchase: any, idx: number) => (
                         <tr
                           key={purchase.id}
-                          className={`transition-colors hover:bg-accent/60 ${idx === arr.length - 1 ? 'last:rounded-b-xl' : ''}`}
+                          className={`transition-colors hover:bg-accent/60 ${idx === paginatedHistory.length - 1 ? 'last:rounded-b-xl' : ''}`}
                           style={{ boxShadow: '0 1px 0 0 #e5e7eb' }}
                         >
                           <td className="px-6 py-4 font-semibold">
@@ -260,6 +275,53 @@ export default function ProfilePage() {
                       ))}
                     </tbody>
                   </table>
+                  {/* ページネーション */}
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4">
+                    <div className="text-sm text-muted-foreground">
+                      {purchaseHistory.length > 0 && (
+                        <span>
+                          {historyStart + 1} - {historyEnd} 件 / 全 {purchaseHistory.length} 件
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setHistoryPage((p) => Math.max(1, p - 1))}
+                        disabled={safeHistoryPage === 1}
+                        aria-label="前のページへ"
+                      >
+                        前へ
+                      </Button>
+                      <div className="flex items-center gap-1">
+                        {Array.from({ length: totalHistoryPages }).map((_, i) => {
+                          const page = i + 1
+                          return (
+                            <Button
+                              key={page}
+                              variant={page === safeHistoryPage ? "default" : "ghost"}
+                              size="sm"
+                              onClick={() => setHistoryPage(page)}
+                              aria-current={page === safeHistoryPage ? "page" : undefined}
+                              aria-label={`ページ ${page}`}
+                            >
+                              {page}
+                            </Button>
+                          )
+                        })}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setHistoryPage((p) => Math.min(totalHistoryPages, p + 1))}
+                        disabled={safeHistoryPage === totalHistoryPages}
+                        aria-label="次のページへ"
+                      >
+                        次へ
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="text-center py-12">
