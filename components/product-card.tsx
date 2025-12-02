@@ -96,7 +96,7 @@ export function ProductCard({ product, showActions = false, onEdit, onDelete, de
         )}
       </div>
 
-      <CardContent className="p-3 sm:p-4 flex-1 flex flex-col">
+      <CardContent className="px-3 sm:px-4 pt-3 sm:pt-4 pb-2 flex-1 flex flex-col">
         <div className="flex items-start justify-between gap-2 mb-2">
           <h3 className="font-semibold text-sm sm:text-base line-clamp-2 leading-snug">
             {product.productname || "商品名なし"}
@@ -112,8 +112,8 @@ export function ProductCard({ product, showActions = false, onEdit, onDelete, de
           )}
         </div>
 
-        {/* 商品説明（短縮版） */}
-        <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+        {/* 商品説明（短縮版） - スマホでは非表示 */}
+        <p className="hidden sm:block text-sm text-muted-foreground mb-3 line-clamp-2">
           {product.content || "説明なし"}
         </p>
 
@@ -123,12 +123,12 @@ export function ProductCard({ product, showActions = false, onEdit, onDelete, de
         </p>
       </CardContent>
 
-      <CardFooter className="p-3 sm:p-4 pt-0 flex items-center justify-between text-sm text-muted-foreground">
+      <CardFooter className="px-3 sm:px-4 py-0.5 flex items-center justify-between text-sm text-muted-foreground">
         <div className="flex flex-col gap-1 text-xs sm:text-sm">
           <span className="truncate font-medium">
             出品者: {product.sellerName || "匿名ユーザー"}
           </span>
-          <span className="text-[10px] sm:text-xs">
+          <span className="hidden sm:block text-[10px] sm:text-xs">
             {formatDate(product.createdAt)}
           </span>
         </div>

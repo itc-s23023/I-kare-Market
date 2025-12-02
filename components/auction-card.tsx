@@ -79,6 +79,13 @@ export function AuctionCard({ auction }: AuctionCardProps) {
       <CardContent className="p-3 sm:p-4 flex-1 flex flex-col">
         <h3 className="font-semibold text-balance leading-tight mb-2 line-clamp-2">{auction.title}</h3>
 
+        {/* オークション説明 - スマホでは非表示 */}
+        {auction.description && (
+          <p className="hidden sm:block text-sm text-muted-foreground mb-2 line-clamp-2">
+            {auction.description}
+          </p>
+        )}
+
         <div className="space-y-2 mb-3">
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">{hasNoBids ? "開始価格" : "現在の入札額"}</span>
