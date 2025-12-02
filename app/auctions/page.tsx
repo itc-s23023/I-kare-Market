@@ -78,13 +78,13 @@ export default function AuctionsPage() {
 
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col sm:flex-row items-start justify-between gap-4 mb-8">
+          <div className="flex flex-col sm:flex-row items-start justify-between gap-4 mb-4 sm:mb-8">
             <div>
-              <h1 className="text-4xl font-bold mb-2 flex items-center gap-3">
+              <h1 className="text-2xl sm:text-4xl font-bold mb-2 flex items-center gap-3">
                 <Gavel className="h-8 w-8 text-primary" />
                 オークション
               </h1>
-              <p className="text-muted-foreground">入札して欲しい商品を手に入れよう</p>
+              <p className="text-base sm:text-lg text-muted-foreground">入札して欲しい商品を手に入れよう</p>
               {!loading && !error && (
                 <div className="text-sm text-muted-foreground mt-2">
                   {searchTerm ? (
@@ -167,11 +167,11 @@ export default function AuctionsPage() {
                   </div>
                 ) : (
                   <>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
                       {activeAuctions.slice(0, visibleCount).map((auction) => (
                         <div key={auction.id} className="group cursor-pointer">
                           <Link href={`/auctions/${auction.id}`}>
-                            <div className="transform transition-transform group-hover:scale-105">
+                            <div className="transform transition-transform sm:group-hover:scale-105">
                               <AuctionCard auction={auction} />
                             </div>
                           </Link>
@@ -179,8 +179,8 @@ export default function AuctionsPage() {
                       ))}
                     </div>
                     {activeAuctions.length > visibleCount && (
-                      <div className="text-center mt-8">
-                        <Button onClick={() => setVisibleCount(visibleCount + 8)}>
+                      <div className="text-center mt-6 sm:mt-8">
+                        <Button size="lg" onClick={() => setVisibleCount(visibleCount + 8)}>
                           もっと見る
                         </Button>
                       </div>
@@ -197,11 +197,11 @@ export default function AuctionsPage() {
                   </div>
                 ) : (
                   <>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
                       {endingSoonAuctions.slice(0, visibleCount).map((auction) => (
                         <div key={auction.id} className="group cursor-pointer">
                           <Link href={`/auctions/${auction.id}`}>
-                            <div className="transform transition-transform group-hover:scale-105">
+                            <div className="transform transition-transform sm:group-hover:scale-105">
                               <AuctionCard auction={auction} />
                             </div>
                           </Link>
@@ -209,8 +209,8 @@ export default function AuctionsPage() {
                       ))}
                     </div>
                     {endingSoonAuctions.length > visibleCount && (
-                      <div className="text-center mt-8">
-                        <Button onClick={() => setVisibleCount(visibleCount + 8)}>
+                      <div className="text-center mt-6 sm:mt-8">
+                        <Button size="lg" onClick={() => setVisibleCount(visibleCount + 8)}>
                           もっと見る
                         </Button>
                       </div>

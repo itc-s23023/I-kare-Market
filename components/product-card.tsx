@@ -57,7 +57,7 @@ export function ProductCard({ product, showActions = false, onEdit, onDelete, de
 
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow h-full flex flex-col">
-      <div className="aspect-square relative overflow-hidden bg-muted">
+      <div className="aspect-[4/3] sm:aspect-square relative overflow-hidden bg-muted">
         <Image 
           src={product.image_url || "/placeholder.svg"} 
           alt={product.productname || "商品画像"} 
@@ -96,9 +96,9 @@ export function ProductCard({ product, showActions = false, onEdit, onDelete, de
         )}
       </div>
 
-      <CardContent className="p-4 flex-1 flex flex-col">
+      <CardContent className="p-3 sm:p-4 flex-1 flex flex-col">
         <div className="flex items-start justify-between gap-2 mb-2">
-          <h3 className="font-semibold text-base line-clamp-2 leading-snug">
+          <h3 className="font-semibold text-sm sm:text-base line-clamp-2 leading-snug">
             {product.productname || "商品名なし"}
           </h3>
         </div>
@@ -123,12 +123,12 @@ export function ProductCard({ product, showActions = false, onEdit, onDelete, de
         </p>
       </CardContent>
 
-      <CardFooter className="p-4 pt-0 flex items-center justify-between text-sm text-muted-foreground">
-        <div className="flex flex-col gap-1">
+      <CardFooter className="p-3 sm:p-4 pt-0 flex items-center justify-between text-sm text-muted-foreground">
+        <div className="flex flex-col gap-1 text-xs sm:text-sm">
           <span className="truncate font-medium">
             出品者: {product.sellerName || "匿名ユーザー"}
           </span>
-          <span className="text-xs">
+          <span className="text-[10px] sm:text-xs">
             {formatDate(product.createdAt)}
           </span>
         </div>
