@@ -43,24 +43,24 @@ export default function HomePage() {
 
       <main className="container max-w-7xl mx-auto px-4 py-8">
         <div className="mb-8">
-          <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-4 sm:mb-6">
             <div className="space-y-3">
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-orange-500 to-orange-600 bg-clip-text text-transparent">
+              <h1 className="text-2xl sm:text-4xl font-bold bg-gradient-to-r from-orange-500 to-orange-600 bg-clip-text text-transparent">
                 学内で不要なものを売買しよう
               </h1>
-              <p className="text-lg text-muted-foreground max-w-2xl">
+              <p className="text-base sm:text-lg text-muted-foreground max-w-2xl">
                 学生同士で安心・安全に取引できるマーケットプレイス
               </p>
-              <div className="flex flex-wrap gap-3 pt-2">
-                <div className="flex items-center gap-2 bg-orange-50 dark:bg-orange-950/20 px-3 py-1.5 rounded-full text-sm">
+              <div className="flex flex-wrap gap-2 sm:gap-3 pt-2">
+                <div className="flex items-center gap-2 bg-orange-50 dark:bg-orange-950/20 px-2.5 sm:px-3 py-1.5 rounded-full text-sm">
                   <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
                   <span className="text-orange-700 dark:text-orange-300 font-medium">学内限定</span>
                 </div>
-                <div className="flex items-center gap-2 bg-green-50 dark:bg-green-950/20 px-3 py-1.5 rounded-full text-sm">
+                <div className="flex items-center gap-2 bg-green-50 dark:bg-green-950/20 px-2.5 sm:px-3 py-1.5 rounded-full text-sm">
                   <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                   <span className="text-green-700 dark:text-green-300 font-medium">安心取引</span>
                 </div>
-                <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-950/20 px-3 py-1.5 rounded-full text-sm">
+                <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-950/20 px-2.5 sm:px-3 py-1.5 rounded-full text-sm">
                   <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                   <span className="text-blue-700 dark:text-blue-300 font-medium">簡単出品</span>
                 </div>
@@ -134,11 +134,11 @@ export default function HomePage() {
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
                   {filteredProducts.slice(0, visibleCount).map((product) => (
                     <div key={product.id} className="group cursor-pointer">
                       <Link href={`/products/${product.id}`}>
-                        <div className="transform transition-transform group-hover:scale-105">
+                            <div className="transform transition-transform sm:group-hover:scale-105">
                           <ProductCard product={product} />
                         </div>
                       </Link>
@@ -146,8 +146,8 @@ export default function HomePage() {
                   ))}
                 </div>
                 {filteredProducts.length > visibleCount && (
-                  <div className="text-center mt-8">
-                    <Button onClick={() => setVisibleCount(visibleCount + 8)}>
+                  <div className="text-center mt-6 sm:mt-8">
+                    <Button size="lg" onClick={() => setVisibleCount(visibleCount + 8)}>
                       もっと見る
                     </Button>
                   </div>
