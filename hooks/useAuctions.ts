@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+
 import { collection, addDoc, getDocs, doc, getDoc, updateDoc, query, where, orderBy, deleteDoc, writeBatch, serverTimestamp, setDoc, onSnapshot } from "firebase/firestore"
 import { db } from "@/lib/firebaseConfig"
 import { useAuth } from "@/components/auth-provider"
@@ -54,7 +55,7 @@ const sendNotification = async (notificationData: {
   }
 }
 
-// オークション終了時のチャット初期化（重複防止付き）
+// オークション終了時のチャット初期化（トランザクション + 決定的IDで重複防止）
 async function createInitialAuctionChatIfNeeded(params: {
   auctionId: string
   sellerId: string
@@ -76,41 +77,58 @@ async function createInitialAuctionChatIfNeeded(params: {
     finalPrice
   } = params
 
+  const auctionRef = doc(db, "auctions", auctionId)
+  const initMsgRef = doc(db, "auctions", auctionId, "chat", "initMessage") // 決定的ID
+  const metaRef = doc(db, "auctions", auctionId, "chat", "meta")
+
   try {
-    // 既に system メッセージが存在するか確認（senderId == 'system' のドキュメントがあれば重複と判断）
-    const existingSystemMsgsSnap = await getDocs(
-      query(collection(db, "auctions", auctionId, "chat"), where("senderId", "==", "system"))
-    )
-    if (!existingSystemMsgsSnap.empty) {
-      console.log(`⚠️ 初回チャットメッセージは既に存在します (auctionId=${auctionId}) - 重複生成をスキップ`)
-      return
-    }
+    await runTransaction(db, async (tx) => {
+      const auctionSnap = await tx.get(auctionRef)
+      if (!auctionSnap.exists()) {
+        console.warn(`⚠️ オークションが存在しないためチャット初期化を中止 (auctionId=${auctionId})`)
+        return
+      }
 
-    // meta 作成/更新（users 情報）
-    const metaRef = doc(db, "auctions", auctionId, "chat", "meta")
-    await setDoc(metaRef, {
-      users: {
-        seller: { id: sellerId, imageURL: sellerImage },
-        buyer: { id: buyerId, imageURL: buyerImage },
-      },
-      chatInitialized: true,
-      initializedAt: new Date().toISOString(),
-    }, { merge: true })
+      const auctionData = auctionSnap.data() || {}
 
-    // メッセージ本文（表示価格は任意。要求仕様では省略した短い文面を使用）
-    const content = finalPrice != null
-      ? `おめでとうございます！${buyerName}さんが最高入札者となりました。出品者の${sellerName}さんとの取引を開始してください。`
-      : `おめでとうございます！${buyerName}さんが最高入札者となりました。出品者の${sellerName}さんとの取引を開始してください。`
+      // 既に初期化済みなら何もしない（冪等）
+      if (auctionData.initialChatCreated) {
+        // 旧バージョンで system メッセージだけあるケースでもここで終了
+        return
+      }
 
-    await addDoc(collection(db, "auctions", auctionId, "chat"), {
-      senderId: "system",
-      senderName: "システム",
-      content,
-      createdAt: serverTimestamp(),
+      // 既存の決定的IDメッセージ確認
+      const initMsgSnap = await tx.get(initMsgRef)
+
+      // メッセージ本文（finalPrice があれば価格を含める余地があるが現在は統一文面）
+      const content = `おめでとうございます！${buyerName}さんが最高入札者となりました。出品者の${sellerName}さんとの取引を開始してください。`
+
+      if (!initMsgSnap.exists()) {
+        tx.set(initMsgRef, {
+          senderId: "system",
+          senderName: "システム",
+          content,
+          createdAt: serverTimestamp(),
+        })
+      }
+
+      // meta 情報を merge 的に更新
+      tx.set(metaRef, {
+        users: {
+          seller: { id: sellerId, imageURL: sellerImage },
+          buyer: { id: buyerId, imageURL: buyerImage },
+        },
+        chatInitialized: true,
+        initializedAt: new Date().toISOString(),
+      }, { merge: true })
+
+      // フラグをオークション本体に付与
+      tx.update(auctionRef, { initialChatCreated: true })
     })
-    console.log(`✅ 初回チャットメッセージ生成完了 (auctionId=${auctionId})`)
+
+    console.log(`✅ 初回チャットメッセージ処理完了 (auctionId=${auctionId})`)
   } catch (e) {
-    console.error("❌ 初回チャットメッセージ生成エラー", e)
+    console.error("❌ 初回チャットメッセージトランザクションエラー", e)
   }
 }
 
