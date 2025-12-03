@@ -825,24 +825,9 @@ export function useAuctionManagement() {
         return
       }
 
-      // 通知のみ作成（チャットメッセージは他の場所で作成される）
-      const notificationData = {
-        userId: auctionData.highestBidderId,
-        userName: auctionData.highestBidderName,
-        type: "auction_won",
-        title: "オークション落札",
-        message: `「${auctionData.title}」のオークションで最高入札者となりました。出品者とのチャットが開始されました。`,
-        auctionId: auctionId,
-        sellerId: auctionData.sellerId,
-        sellerName: auctionData.sellerName,
-        finalPrice: auctionData.currentBid,
-        read: false,
-        createdAt: new Date().toISOString()
-      }
-
-      await addDoc(collection(db, "notifications"), notificationData)
-
-      console.log("✅ 最高入札者への通知完了（チャット初期メッセージは別途作成）")
+      // この関数では通知を送信しない（重複防止）
+      // 通知は checkAndEndExpiredAuctions で既に送信済み
+      console.log("✅ 最高入札者への通知スキップ（重複防止）")
     } catch (error) {
       console.error("❌ 最高入札者への通知エラー:", error)
     }
@@ -1014,6 +999,38 @@ export function useAuctionManagement() {
         actualEndTime: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       })
+
+      // 即決購入の通知を送信（購入者と出品者の両方に）
+      try {
+        console.log("🔔 即決購入通知送信開始")
+        
+        // 購入者への通知
+        await sendNotification({
+          userId: user.uid,
+          type: "auction_won",
+          title: "即決購入完了",
+          message: `「${auctionData.title}」を即決購入しました。出品者とチャットで取引を進めてください。`,
+          auctionId: auctionId,
+          sellerId: auctionData.sellerId,
+          itemType: "auction" as const,
+        })
+
+        // 出品者への通知
+        await sendNotification({
+          userId: auctionData.sellerId,
+          type: "auction_ended",
+          title: "即決購入されました",
+          message: `「${auctionData.title}」が ${user.displayName || "匿名ユーザー"} さんに即決購入されました。`,
+          auctionId: auctionId,
+          buyerId: user.uid,
+          itemType: "auction" as const,
+        })
+        
+        console.log("✅ 即決購入通知送信完了")
+      } catch (notificationError) {
+        console.error("⚠️ 即決購入通知送信エラー（購入自体は成功）:", notificationError)
+        // 通知エラーでも購入は成功しているので処理は続行
+      }
 
       // チャット初期化（meta作成）
       console.log("💬 チャット初期化開始")
