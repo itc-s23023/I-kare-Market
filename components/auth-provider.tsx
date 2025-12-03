@@ -33,6 +33,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const userDocRef = doc(db, "users", user.uid)
       const userDoc = await getDoc(userDocRef)
 
+      // 学校ドメインチェック（環境変数で設定）
+      const allowedDomain = process.env.NEXT_PUBLIC_SCHOOL_EMAIL_DOMAIN
+      const email = user.email || ""
+      const isSchoolEmail = allowedDomain ? email.endsWith(`@${allowedDomain}`) : true
+      // 学校外メールはここでは書き込み・削除を行わず、別フローでクリーンアップ（ログイン画面側）
+      if (!isSchoolEmail) return
+
      
       if (!userDoc.exists()) {
         console.log("🔄 新規ユーザー登録:", user.uid)

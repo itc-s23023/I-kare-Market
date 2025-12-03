@@ -28,6 +28,19 @@ export default function LoginPage() {
       const result = await signInWithPopup(auth, googleProvider)
       const email = result.user.email || ""
       if (!email.endsWith("@std.it-college.ac.jp")) {
+        // 既に誤って作成されたユーザードキュメントをメールで特定して削除
+        try {
+          const { db } = await import("@/lib/firebaseConfig")
+          const { collection, query, where, getDocs, deleteDoc } = await import("firebase/firestore")
+          const q = query(collection(db, "users"), where("email", "==", email))
+          const snap = await getDocs(q)
+          for (const d of snap.docs) {
+            await deleteDoc(d.ref)
+          }
+          console.log("🧹 不許可メールのユーザーデータを削除:", email, "件数:", snap.size)
+        } catch (cleanupErr) {
+          console.error("⚠️ 不許可メール削除時のエラー:", cleanupErr)
+        }
         await signOut(auth)
         alert("学校のメールアドレス（@std.it-college.ac.jp）でのみログインできます。\n別のアカウントで再度お試しください。")
         return
