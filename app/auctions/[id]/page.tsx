@@ -48,6 +48,22 @@ export default function AuctionDetailPage() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [bidError, setBidError] = useState<string | null>(null)
   const [bidSuccess, setBidSuccess] = useState<string | null>(null)
+  
+  // リアルタイム更新エフェクト用の状態
+  const [priceUpdated, setPriceUpdated] = useState(false)
+  const [previousPrice, setPreviousPrice] = useState<number | null>(null)
+
+  // 価格更新の監視とエフェクト
+  useEffect(() => {
+    if (auction) {
+      if (previousPrice !== null && auction.currentBid !== previousPrice) {
+        setPriceUpdated(true)
+        // 2秒後にエフェクトを終了
+        setTimeout(() => setPriceUpdated(false), 2000)
+      }
+      setPreviousPrice(auction.currentBid)
+    }
+  }, [auction?.currentBid, previousPrice])
 
   useEffect(() => {
     if (auction) {
@@ -255,9 +271,16 @@ export default function AuctionDetailPage() {
                       <p className="text-sm text-muted-foreground mb-1">
                         {hasNoBids ? "開始価格" : "現在の最高入札額"}
                       </p>
-                      <p className="text-4xl font-bold text-primary">
+                      <p className={`text-4xl font-bold transition-colors duration-500 ${
+                        priceUpdated ? "text-green-500" : "text-primary"
+                      }`}>
                         ¥{auction.currentBid.toLocaleString()}
                       </p>
+                      {priceUpdated && (
+                        <p className="text-sm text-green-600 font-medium animate-pulse">
+                          ↗ 価格が更新されました！
+                        </p>
+                      )}
                     </div>
 
                     {auction.buyNowPrice && (

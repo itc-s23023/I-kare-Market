@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ArrowLeft, ExternalLink, Loader2, Trash2 } from "lucide-react"
 import { db, storage } from "@/lib/firebaseConfig"
-import { doc, getDoc, updateDoc, deleteDoc } from "firebase/firestore"
+import { doc, getDoc, updateDoc, deleteDoc, collection, getDocs } from "firebase/firestore"
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage"
 
 // 動的レンダリングを強制
@@ -160,6 +160,18 @@ export default function EditAuctionPage({ params }: { params: Promise<{ id: stri
 
     setIsSubmitting(true)
     try {
+      // 先にサブコレクション chat を削除（FirestoreのdeleteDocは再帰削除しないため）
+      try {
+        const chatCol = collection(db, "auctions", auction.id, "chat")
+        const chatSnap = await getDocs(chatCol)
+        if (chatSnap.size > 0) {
+          await Promise.all(chatSnap.docs.map((d) => deleteDoc(d.ref)))
+          console.log("🧹 auctions/" + auction.id + "/chat を削除:", chatSnap.size, "件")
+        }
+      } catch (e) {
+        console.error("❌ chatサブコレクション削除に失敗（オークション削除は続行）:", e)
+      }
+
       await deleteDoc(doc(db, "auctions", auction.id))
 
       // 画像削除（オプション、失敗しても続行）
