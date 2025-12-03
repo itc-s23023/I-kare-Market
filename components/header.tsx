@@ -209,53 +209,68 @@ export function Header() {
           )}
         </nav>
 
-        {/* スマホ表示用の通知ボタン */}
+        {/* スマホ表示用：通知アイコンの左に出品ボタン（プラスアイコン）を追加 */}
         <div className="md:hidden ml-auto flex items-center gap-2">
           {user && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="relative">
-                  <Bell className="h-5 w-5" />
-                  {unreadCount > 0 && (
-                    <Badge
-                      variant="destructive"
-                      className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
-                    >
-                      {unreadCount}
-                    </Badge>
-                  )}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-80 max-h-96 overflow-y-auto">
-                <div className="px-2 py-1.5 text-sm font-semibold">通知</div>
-                {notifications.length === 0 ? (
-                  <div className="px-2 py-8 text-center text-sm text-muted-foreground">通知はありません</div>
-                ) : (
-                  notifications.map((notification) => (
-                    <DropdownMenuItem
-                      key={notification.id}
-                      className="flex flex-col items-start gap-1 p-3 cursor-pointer"
-                      onClick={() => handleNotificationClick(notification.id, notification.auctionId, notification.productId, notification.type)}
-                    >
-                      <div className="flex items-start gap-2 w-full">
-                        <div className="flex-1">
-                          <p className={`text-sm font-medium ${!notification.read ? "text-foreground" : "text-muted-foreground"}`}>
-                            {notification.title}
-                          </p>
-                          <p className={`text-sm leading-relaxed mt-1 ${!notification.read ? "text-foreground" : "text-muted-foreground"}`}>
-                            {notification.message}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {new Date(notification.createdAt).toLocaleString("ja-JP")}
-                          </p>
+            <>
+              {/* プラスアイコン（出品） */}
+              <Button
+                asChild
+                variant="ghost"
+                size="icon"
+                className="relative"
+                aria-label="出品する"
+              >
+                <Link href={sellLink}>
+                  <Plus className="h-6 w-6" />
+                </Link>
+              </Button>
+              {/* 通知アイコン */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="relative">
+                    <Bell className="h-5 w-5" />
+                    {unreadCount > 0 && (
+                      <Badge
+                        variant="destructive"
+                        className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                      >
+                        {unreadCount}
+                      </Badge>
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-80 max-h-96 overflow-y-auto">
+                  <div className="px-2 py-1.5 text-sm font-semibold">通知</div>
+                  {notifications.length === 0 ? (
+                    <div className="px-2 py-8 text-center text-sm text-muted-foreground">通知はありません</div>
+                  ) : (
+                    notifications.map((notification) => (
+                      <DropdownMenuItem
+                        key={notification.id}
+                        className="flex flex-col items-start gap-1 p-3 cursor-pointer"
+                        onClick={() => handleNotificationClick(notification.id, notification.auctionId, notification.productId, notification.type)}
+                      >
+                        <div className="flex items-start gap-2 w-full">
+                          <div className="flex-1">
+                            <p className={`text-sm font-medium ${!notification.read ? "text-foreground" : "text-muted-foreground"}`}>
+                              {notification.title}
+                            </p>
+                            <p className={`text-sm leading-relaxed mt-1 ${!notification.read ? "text-foreground" : "text-muted-foreground"}`}>
+                              {notification.message}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {new Date(notification.createdAt).toLocaleString("ja-JP")}
+                            </p>
+                          </div>
+                          {!notification.read && <div className="h-2 w-2 rounded-full bg-primary mt-1 flex-shrink-0" />}
                         </div>
-                        {!notification.read && <div className="h-2 w-2 rounded-full bg-primary mt-1 flex-shrink-0" />}
-                      </div>
-                    </DropdownMenuItem>
-                  ))
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                      </DropdownMenuItem>
+                    ))
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
           )}
         </div>
 

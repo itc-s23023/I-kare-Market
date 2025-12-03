@@ -719,25 +719,23 @@ export function useBiddingHistory(auctionId: string) {
       return
     }
 
-    const fetchBiddingHistory = async () => {
-      try {
-        console.log("🔄 入札履歴取得開始:", auctionId)
-
-        const simpleQuery = query(
-          collection(db, "bidding_history"),
-          where("auction_productid", "==", auctionId)
-        )
+    console.log("🔄 入札履歴リアルタイム監視開始:", auctionId)
+    
+    // Firestoreのリアルタイム監視に変更
+    const q = query(
+      collection(db, "bidding_history"),
+      where("auction_productid", "==", auctionId)
+    )
+    
+    const unsubscribe = onSnapshot(
+      q,
+      (querySnapshot) => {
+        console.log("📡 入札履歴変更検知:", querySnapshot.size, "件")
         
-        console.log("📊 シンプルクエリ実行中...")
-        const querySnapshot = await getDocs(simpleQuery)
         const historyData: BiddingHistory[] = []
-        
-        console.log(`📄 取得した入札履歴件数: ${querySnapshot.size}`)
         
         querySnapshot.forEach((doc) => {
           const data = doc.data()
-          console.log("📝 入札履歴データ:", doc.id, data)
-          
           historyData.push({
             id: doc.id,
             auction_productid: String(data.auction_productid || ""),
@@ -748,29 +746,65 @@ export function useBiddingHistory(auctionId: string) {
           })
         })
 
-        historyData.sort((a, b) => new Date(b.bid_time).getTime() - new Date(a.bid_time).getTime())
+        // 入札額の降順でソート（最高額が最初）
+        historyData.sort((a, b) => b.bid_amount - a.bid_amount)
 
-        console.log(`✅ 入札履歴取得完了: ${historyData.length}件`)
+        console.log(`✅ 入札履歴リアルタイム更新完了: ${historyData.length}件`)
         setBiddingHistory(historyData)
         setError(null)
-      } catch (error: any) {
-        console.error("❌ 入札履歴取得エラー:", error)
-        console.error("エラー詳細:", error.code, error.message)
-        
-        
-        if (error.code === 'failed-precondition') {
-          setError("データベースのインデックスが不足しています。Firebase Consoleでインデックスを作成してください。")
-        } else if (error.code === 'permission-denied') {
-          setError("入札履歴へのアクセス権限がありません。")
-        } else {
-          setError(`入札履歴の取得に失敗しました: ${error.message}`)
-        }
-      } finally {
         setLoading(false)
-      }
-    }
+      },
+      (error) => {
+        console.error("❌ 入札履歴リアルタイム監視エラー:", error)
+        
+        // エラー時は従来の方法にフォールバック
+        const fetchBiddingHistoryFallback = async () => {
+          try {
+            const simpleQuery = query(
+              collection(db, "bidding_history"),
+              where("auction_productid", "==", auctionId)
+            )
+            
+            const querySnapshot = await getDocs(simpleQuery)
+            const historyData: BiddingHistory[] = []
+            
+            querySnapshot.forEach((doc) => {
+              const data = doc.data()
+              historyData.push({
+                id: doc.id,
+                auction_productid: String(data.auction_productid || ""),
+                userid: String(data.userid || ""),
+                username: String(data.username || "匿名ユーザー"),
+                bid_amount: Number(data.bid_amount) || 0,
+                bid_time: String(data.bid_time || new Date().toISOString())
+              })
+            })
 
-    fetchBiddingHistory()
+            historyData.sort((a, b) => b.bid_amount - a.bid_amount)
+            setBiddingHistory(historyData)
+            setError(null)
+          } catch (fallbackError: any) {
+            if (fallbackError.code === 'failed-precondition') {
+              setError("データベースのインデックスが不足しています。")
+            } else if (fallbackError.code === 'permission-denied') {
+              setError("入札履歴へのアクセス権限がありません。")
+            } else {
+              setError(`入札履歴の取得に失敗しました: ${fallbackError.message}`)
+            }
+          } finally {
+            setLoading(false)
+          }
+        }
+        
+        fetchBiddingHistoryFallback()
+      }
+    )
+
+    // クリーンアップ関数
+    return () => {
+      console.log("🔌 入札履歴リアルタイム監視停止:", auctionId)
+      unsubscribe()
+    }
   }, [auctionId])
 
   return { biddingHistory, loading, error }
