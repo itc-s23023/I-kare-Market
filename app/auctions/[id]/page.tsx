@@ -52,6 +52,10 @@ export default function AuctionDetailPage() {
   // リアルタイム更新エフェクト用の状態
   const [priceUpdated, setPriceUpdated] = useState(false)
   const [previousPrice, setPreviousPrice] = useState<number | null>(null)
+  
+  // 入札履歴リアルタイム更新用の状態
+  const [newBidId, setNewBidId] = useState<string | null>(null)
+  const [previousBidCount, setPreviousBidCount] = useState<number>(0)
 
   // 価格更新の監視とエフェクト
   useEffect(() => {
@@ -64,6 +68,19 @@ export default function AuctionDetailPage() {
       setPreviousPrice(auction.currentBid)
     }
   }, [auction?.currentBid, previousPrice])
+
+  // 入札履歴の変更監視とエフェクト
+  useEffect(() => {
+    if (biddingHistory.length > 0) {
+      const currentBidCount = biddingHistory.length
+      if (previousBidCount > 0 && currentBidCount > previousBidCount) {
+        // 新しい入札が追加された場合
+        setNewBidId(biddingHistory[0].id)
+        setTimeout(() => setNewBidId(null), 3000)
+      }
+      setPreviousBidCount(currentBidCount)
+    }
+  }, [biddingHistory, previousBidCount])
 
   useEffect(() => {
     if (auction) {
@@ -520,7 +537,7 @@ export default function AuctionDetailPage() {
                       ) : (
                         <div className="space-y-4">
                           {biddingHistory.map((bid, index) => (
-                            <div key={bid.id} className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                            <div key={bid.id} className={`flex items-center justify-between p-4 rounded-lg ${newBidId === bid.id ? "bg-green-100" : "bg-muted/50"}`}>
                               <div className="flex items-center gap-3">
                                 <Badge variant={index === 0 ? "default" : "secondary"} className="min-w-fit">
                                   {index === 0 ? "最高額" : `${index + 1}位`}
