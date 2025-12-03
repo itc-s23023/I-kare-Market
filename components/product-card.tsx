@@ -5,6 +5,7 @@ import Image from "next/image"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import ConfirmDialog from "@/components/confirm-dialog"
 import { Heart } from "lucide-react"
 import { useLikes } from "@/hooks/uselike"
 
@@ -13,6 +14,9 @@ import type { Product } from "@/hooks/useProducts"
 interface ProductCardProps {
   product: Product
   showActions?: boolean
+  onEdit?: (product: Product) => void
+  onDelete?: (product: Product) => Promise<void> | void
+  deleting?: boolean
 }
 
 const conditionLabels = {
@@ -22,7 +26,7 @@ const conditionLabels = {
   fair: "可",
 } as const
 
-export function ProductCard({ product, showActions = false }: ProductCardProps) {
+export function ProductCard({ product, showActions = false, onEdit, onDelete, deleting }: ProductCardProps) {
   const { isLiked, toggleLike } = useLikes()
 
   const handleLikeClick = (e: React.MouseEvent) => {
@@ -53,7 +57,7 @@ export function ProductCard({ product, showActions = false }: ProductCardProps) 
 
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow h-full flex flex-col">
-      <div className="aspect-square relative overflow-hidden bg-muted">
+      <div className="aspect-[4/3] sm:aspect-square relative overflow-hidden bg-muted">
         <Image 
           src={product.image_url || "/placeholder.svg"} 
           alt={product.productname || "商品画像"} 
@@ -92,9 +96,9 @@ export function ProductCard({ product, showActions = false }: ProductCardProps) 
         )}
       </div>
 
-      <CardContent className="p-4 flex-1 flex flex-col">
+      <CardContent className="px-3 sm:px-4 pt-3 sm:pt-4 pb-2 flex-1 flex flex-col">
         <div className="flex items-start justify-between gap-2 mb-2">
-          <h3 className="font-semibold text-base line-clamp-2 leading-snug">
+          <h3 className="font-semibold text-sm sm:text-base line-clamp-2 leading-snug">
             {product.productname || "商品名なし"}
           </h3>
         </div>
@@ -108,8 +112,8 @@ export function ProductCard({ product, showActions = false }: ProductCardProps) 
           )}
         </div>
 
-        {/* 商品説明（短縮版） */}
-        <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+        {/* 商品説明（短縮版） - スマホでは非表示 */}
+        <p className="hidden sm:block text-sm text-muted-foreground mb-3 line-clamp-2">
           {product.content || "説明なし"}
         </p>
 
@@ -119,24 +123,50 @@ export function ProductCard({ product, showActions = false }: ProductCardProps) 
         </p>
       </CardContent>
 
-      <CardFooter className="p-4 pt-0 flex items-center justify-between text-sm text-muted-foreground">
-        <div className="flex flex-col gap-1">
+      <CardFooter className="px-3 sm:px-4 py-0.5 flex items-center justify-between text-sm text-muted-foreground">
+        <div className="flex flex-col gap-1 text-xs sm:text-sm">
           <span className="truncate font-medium">
             出品者: {product.sellerName || "匿名ユーザー"}
           </span>
-          <span className="text-xs">
+          <span className="hidden sm:block text-[10px] sm:text-xs">
             {formatDate(product.createdAt)}
           </span>
         </div>
         
         {showActions && (
           <div className="flex gap-2">
-            <Button variant="outline" size="sm">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onEdit?.(product)}
+              disabled={deleting}
+            >
               編集
             </Button>
-            <Button variant="destructive" size="sm">
-              削除
-            </Button>
+            {onDelete ? (
+              <ConfirmDialog
+                trigger={
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    disabled={deleting}
+                  >
+                    削除
+                  </Button>
+                }
+                title="商品を削除しますか？"
+                description={"この操作は取り消せません。"}
+                confirmLabel={deleting ? "削除中..." : "削除を確定"}
+                confirmVariant="destructive"
+                onConfirm={() => onDelete(product)}
+                confirmDisabled={deleting}
+                loading={deleting}
+              />
+            ) : (
+              <Button variant="destructive" size="sm" disabled>
+                削除
+              </Button>
+            )}
           </div>
         )}
       </CardFooter>

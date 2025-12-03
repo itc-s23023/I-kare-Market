@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { collection, addDoc, getDocs, doc, getDoc, updateDoc, query, where, orderBy, deleteDoc, writeBatch, serverTimestamp, setDoc } from "firebase/firestore"
+
+import { collection, addDoc, getDocs, doc, getDoc, updateDoc, query, where, orderBy, deleteDoc, writeBatch, serverTimestamp, setDoc, onSnapshot } from "firebase/firestore"
 import { db } from "@/lib/firebaseConfig"
 import { useAuth } from "@/components/auth-provider"
 
@@ -54,7 +55,7 @@ const sendNotification = async (notificationData: {
   }
 }
 
-// オークション終了時のチャット初期化（重複防止付き）
+// オークション終了時のチャット初期化（トランザクション + 決定的IDで重複防止）
 async function createInitialAuctionChatIfNeeded(params: {
   auctionId: string
   sellerId: string
@@ -76,41 +77,58 @@ async function createInitialAuctionChatIfNeeded(params: {
     finalPrice
   } = params
 
+  const auctionRef = doc(db, "auctions", auctionId)
+  const initMsgRef = doc(db, "auctions", auctionId, "chat", "initMessage") // 決定的ID
+  const metaRef = doc(db, "auctions", auctionId, "chat", "meta")
+
   try {
-    // 既に system メッセージが存在するか確認（senderId == 'system' のドキュメントがあれば重複と判断）
-    const existingSystemMsgsSnap = await getDocs(
-      query(collection(db, "auctions", auctionId, "chat"), where("senderId", "==", "system"))
-    )
-    if (!existingSystemMsgsSnap.empty) {
-      console.log(`⚠️ 初回チャットメッセージは既に存在します (auctionId=${auctionId}) - 重複生成をスキップ`)
-      return
-    }
+    await runTransaction(db, async (tx) => {
+      const auctionSnap = await tx.get(auctionRef)
+      if (!auctionSnap.exists()) {
+        console.warn(`⚠️ オークションが存在しないためチャット初期化を中止 (auctionId=${auctionId})`)
+        return
+      }
 
-    // meta 作成/更新（users 情報）
-    const metaRef = doc(db, "auctions", auctionId, "chat", "meta")
-    await setDoc(metaRef, {
-      users: {
-        seller: { id: sellerId, imageURL: sellerImage },
-        buyer: { id: buyerId, imageURL: buyerImage },
-      },
-      chatInitialized: true,
-      initializedAt: new Date().toISOString(),
-    }, { merge: true })
+      const auctionData = auctionSnap.data() || {}
 
-    // メッセージ本文（表示価格は任意。要求仕様では省略した短い文面を使用）
-    const content = finalPrice != null
-      ? `おめでとうございます！${buyerName}さんが最高入札者となりました。出品者の${sellerName}さんとの取引を開始してください。`
-      : `おめでとうございます！${buyerName}さんが最高入札者となりました。出品者の${sellerName}さんとの取引を開始してください。`
+      // 既に初期化済みなら何もしない（冪等）
+      if (auctionData.initialChatCreated) {
+        // 旧バージョンで system メッセージだけあるケースでもここで終了
+        return
+      }
 
-    await addDoc(collection(db, "auctions", auctionId, "chat"), {
-      senderId: "system",
-      senderName: "システム",
-      content,
-      createdAt: serverTimestamp(),
+      // 既存の決定的IDメッセージ確認
+      const initMsgSnap = await tx.get(initMsgRef)
+
+      // メッセージ本文（finalPrice があれば価格を含める余地があるが現在は統一文面）
+      const content = `おめでとうございます！${buyerName}さんが最高入札者となりました。出品者の${sellerName}さんとの取引を開始してください。`
+
+      if (!initMsgSnap.exists()) {
+        tx.set(initMsgRef, {
+          senderId: "system",
+          senderName: "システム",
+          content,
+          createdAt: serverTimestamp(),
+        })
+      }
+
+      // meta 情報を merge 的に更新
+      tx.set(metaRef, {
+        users: {
+          seller: { id: sellerId, imageURL: sellerImage },
+          buyer: { id: buyerId, imageURL: buyerImage },
+        },
+        chatInitialized: true,
+        initializedAt: new Date().toISOString(),
+      }, { merge: true })
+
+      // フラグをオークション本体に付与
+      tx.update(auctionRef, { initialChatCreated: true })
     })
-    console.log(`✅ 初回チャットメッセージ生成完了 (auctionId=${auctionId})`)
+
+    console.log(`✅ 初回チャットメッセージ処理完了 (auctionId=${auctionId})`)
   } catch (e) {
-    console.error("❌ 初回チャットメッセージ生成エラー", e)
+    console.error("❌ 初回チャットメッセージトランザクションエラー", e)
   }
 }
 
@@ -154,16 +172,18 @@ export function useAuctions() {
   }
 
   useEffect(() => {
-    const fetchAuctions = async () => {
-      try {
-        console.log("🔄 オークションデータ取得開始")
+    console.log("🔄 オークションリアルタイム監視開始")
+    
+    // Firestoreのリアルタイム監視
+    const unsubscribe = onSnapshot(
+      collection(db, "auctions"),
+      (snapshot) => {
+        console.log("📡 オークションデータ変更検知:", snapshot.size, "件")
         
-        const querySnapshot = await getDocs(collection(db, "auctions"))
         const auctionsData: Auction[] = []
         
-        querySnapshot.forEach((doc) => {
+        snapshot.forEach((doc) => {
           const data = doc.data()
-          console.log("📄 取得したオークション:", doc.id, data)
           
           auctionsData.push({
             id: doc.id,
@@ -184,21 +204,62 @@ export function useAuctions() {
           })
         })
 
-        // 終了日時でソート（新しい順）
+        // 作成日時でソート（新しい順）
         auctionsData.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 
-        console.log(`✅ オークションデータ取得完了: ${auctionsData.length}件`)
+        console.log(`✅ オークションリアルタイム更新完了: ${auctionsData.length}件`)
         setAuctions(auctionsData)
         setError(null)
-      } catch (error: any) {
-        console.error("❌ オークションデータ取得エラー:", error)
-        setError(`オークションデータの取得に失敗しました: ${error.message}`)
-      } finally {
         setLoading(false)
-      }
-    }
+      },
+      (error) => {
+        console.error("❌ オークションリアルタイム監視エラー:", error)
+        // エラー時は従来の方法にフォールバック
+        const fetchAuctions = async () => {
+          try {
+            const querySnapshot = await getDocs(collection(db, "auctions"))
+            const auctionsData: Auction[] = []
+            
+            querySnapshot.forEach((doc) => {
+              const data = doc.data()
+              auctionsData.push({
+                id: doc.id,
+                title: String(data.title || "タイトルなし"),
+                description: String(data.description || ""),
+                images: Array.isArray(data.images) ? data.images : [],
+                startingPrice: Number(data.startingPrice) || 0,
+                currentBid: Number(data.currentBid) || Number(data.startingPrice) || 0,
+                buyNowPrice: data.buyNowPrice ? Number(data.buyNowPrice) : undefined,
+                bidCount: Number(data.bidCount) || 0,
+                endTime: String(data.endTime || new Date().toISOString()),
+                status: String(data.status || "active") as "active" | "ended",
+                sellerId: String(data.sellerId || ""),
+                sellerName: String(data.sellerName || "匿名ユーザー"),
+                category: data.category ? String(data.category) : undefined,
+                condition: data.condition ? String(data.condition) : undefined,
+                createdAt: String(data.createdAt || new Date().toISOString())
+              })
+            })
 
-    fetchAuctions()
+            auctionsData.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+            setAuctions(auctionsData)
+            setError(null)
+          } catch (fallbackError: any) {
+            setError(`オークションデータの取得に失敗しました: ${fallbackError.message}`)
+          } finally {
+            setLoading(false)
+          }
+        }
+        
+        fetchAuctions()
+      }
+    )
+
+    // クリーンアップ関数
+    return () => {
+      console.log("🔌 オークションリアルタイム監視停止")
+      unsubscribe()
+    }
   }, [])
 
   // オークション終了チェックと通知送信
@@ -371,16 +432,16 @@ export function useAuction(id: string) {
   useEffect(() => {
     if (!id) return
 
-    const fetchAuction = async () => {
-      try {
-        console.log("🔄 オークション詳細取得開始:", id)
-        
-        const docRef = doc(db, "auctions", id)
-        const docSnap = await getDoc(docRef)
-        
+    console.log("🔄 オークション詳細リアルタイム監視開始:", id)
+    
+    // Firestoreのリアルタイム監視
+    const docRef = doc(db, "auctions", id)
+    const unsubscribe = onSnapshot(
+      docRef,
+      (docSnap) => {
         if (docSnap.exists()) {
           const data = docSnap.data()
-          console.log("📄 取得したオークション詳細:", data)
+          console.log("📡 オークション詳細変更検知:", id)
           
           const auctionData: Auction = {
             id: docSnap.id,
@@ -401,20 +462,63 @@ export function useAuction(id: string) {
           }
           
           setAuction(auctionData)
-          console.log("✅ オークション詳細取得完了")
+          setError(null)
+          console.log("✅ オークション詳細リアルタイム更新完了")
         } else {
           console.log("❌ オークションが見つかりません")
           setError("オークションが見つかりません")
         }
-      } catch (error: any) {
-        console.error("❌ オークション詳細取得エラー:", error)
-        setError(`オークション詳細の取得に失敗しました: ${error.message}`)
-      } finally {
         setLoading(false)
+      },
+      (error) => {
+        console.error("❌ オークション詳細リアルタイム監視エラー:", error)
+        // エラー時は従来の方法にフォールバック
+        const fetchAuction = async () => {
+          try {
+            const docRef = doc(db, "auctions", id)
+            const docSnap = await getDoc(docRef)
+            
+            if (docSnap.exists()) {
+              const data = docSnap.data()
+              const auctionData: Auction = {
+                id: docSnap.id,
+                title: String(data.title || "タイトルなし"),
+                description: String(data.description || ""),
+                images: Array.isArray(data.images) ? data.images : [],
+                startingPrice: Number(data.startingPrice) || 0,
+                currentBid: Number(data.currentBid) || Number(data.startingPrice) || 0,
+                buyNowPrice: data.buyNowPrice ? Number(data.buyNowPrice) : undefined,
+                bidCount: Number(data.bidCount) || 0,
+                endTime: String(data.endTime || new Date().toISOString()),
+                status: String(data.status || "active") as "active" | "ended",
+                sellerId: String(data.sellerId || ""),
+                sellerName: String(data.sellerName || "匿名ユーザー"),
+                category: data.category ? String(data.category) : undefined,
+                condition: data.condition ? String(data.condition) : undefined,
+                createdAt: String(data.createdAt || new Date().toISOString())
+              }
+              
+              setAuction(auctionData)
+              setError(null)
+            } else {
+              setError("オークションが見つかりません")
+            }
+          } catch (fallbackError: any) {
+            setError(`オークション詳細の取得に失敗しました: ${fallbackError.message}`)
+          } finally {
+            setLoading(false)
+          }
+        }
+        
+        fetchAuction()
       }
-    }
+    )
 
-    fetchAuction()
+    // クリーンアップ関数
+    return () => {
+      console.log("🔌 オークション詳細リアルタイム監視停止:", id)
+      unsubscribe()
+    }
   }, [id])
 
   return { auction, loading, error }

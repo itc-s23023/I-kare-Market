@@ -178,7 +178,7 @@ export function TopSellers() {
                         <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
                         <span>{seller.rating > 0 ? seller.rating.toFixed(1) : "未評価"}</span>
                       </div>
-                      <div>
+                      <div className="hidden sm:block">
                         <span>{seller.transactions}件の取引</span>
                       </div>
                     </div>

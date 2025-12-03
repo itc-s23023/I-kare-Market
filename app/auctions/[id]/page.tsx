@@ -6,6 +6,7 @@ import { Header } from "@/components/header"
 import { useAuction, useBidding, useBiddingHistory, useAuctionManagement, useAuctionAutoClose } from "@/hooks/useAuctions"
 import { useAuth } from "@/components/auth-provider"
 import { Button } from "@/components/ui/button"
+import ConfirmDialog from "@/components/confirm-dialog"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -289,16 +290,29 @@ export default function AuctionDetailPage() {
                               <p className="font-semibold text-muted-foreground">出品者オプション</p>
                               <p className="text-xs text-muted-foreground">オークションを手動で終了できます</p>
                             </div>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={handleManualClose}
-                              disabled={isProcessing}
-                              className="flex items-center gap-2"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                              {isProcessing ? "処理中..." : "終了"}
-                            </Button>
+                            <ConfirmDialog
+                              trigger={
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={isProcessing}
+                                  className="flex items-center gap-2"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  {isProcessing ? "処理中..." : "終了"}
+                                </Button>
+                              }
+                              title="オークションを終了しますか？"
+                              description={(
+                                <>
+                                  手動終了すると現在の最高入札者が落札者となり、以後の入札はできなくなります。<br />
+                                  この操作は取り消せません。よろしいですか？
+                                </>
+                              )}
+                              confirmLabel="終了を確定"
+                              onConfirm={handleManualClose}
+                              confirmDisabled={isProcessing}
+                            />
                           </div>
                         </div>
                       </div>
@@ -321,28 +335,57 @@ export default function AuctionDetailPage() {
                               min={minimumBid}
                               className="flex-1"
                             />
-                            <Button
-                              onClick={handleBid}
-                              className="px-6"
-                              disabled={!bidAmount || Number(bidAmount) < minimumBid || isSubmitting}
-                            >
-                              <Gavel className="h-4 w-4 mr-2" />
-                              {isSubmitting ? "入札中..." : "入札"}
-                            </Button>
+                            <ConfirmDialog
+                              trigger={
+                                <Button
+                                  className="px-6"
+                                  disabled={!bidAmount || Number(bidAmount) < minimumBid || isSubmitting}
+                                >
+                                  <Gavel className="h-4 w-4 mr-2" />
+                                  {isSubmitting ? "入札中..." : "入札"}
+                                </Button>
+                              }
+                              title="本当に入札しますか？"
+                              description={(
+                                <>
+                                  入札額: <span className="font-bold">¥{bidAmount}</span> で入札します。<br />
+                                  この操作は取り消せません。
+                                </>
+                              )}
+                              confirmLabel="入札を確定"
+                              onConfirm={handleBid}
+                              confirmDisabled={!bidAmount || Number(bidAmount) < minimumBid || isSubmitting}
+                              loading={isSubmitting}
+                            />
                           </div>
                         </div>
 
                         {auction.buyNowPrice && (
-                          <Button
-                            onClick={handleBuyNow}
-                            variant="outline"
-                            size="lg"
-                            className="w-full"
-                            disabled={isProcessing}
-                          >
-                            <ShoppingCart className="h-4 w-4 mr-2" />
-                            {isProcessing ? "処理中..." : `¥${auction.buyNowPrice.toLocaleString()} で即決購入`}
-                          </Button>
+                          <ConfirmDialog
+                            trigger={
+                              <Button
+                                variant="outline"
+                                size="lg"
+                                className="w-full"
+                                disabled={isProcessing}
+                              >
+                                <ShoppingCart className="h-4 w-4 mr-2" />
+                                {isProcessing ? "処理中..." : `¥${auction.buyNowPrice.toLocaleString()} で即決購入`}
+                              </Button>
+                            }
+                            title="即決購入の確認"
+                            description={(
+                              <>
+                                即決価格 <span className="font-bold">¥{auction.buyNowPrice.toLocaleString()}</span> で購入を確定します。<br />
+                                確定後は入札が終了し、取引チャット画面へ移動します。<br />
+                                この操作は取り消せません。よろしいですか？
+                              </>
+                            )}
+                            confirmLabel="即決購入を確定"
+                            onConfirm={handleBuyNow}
+                            confirmDisabled={isProcessing}
+                            loading={isProcessing}
+                          />
                         )}
                       </div>
                     )}

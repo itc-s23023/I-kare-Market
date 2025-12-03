@@ -3,6 +3,7 @@
 import { use, useState, useRef, useEffect, Suspense } from "react"
 import { Header } from "@/components/header"
 import { Button } from "@/components/ui/button"
+import ConfirmDialog from "@/components/confirm-dialog"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -185,16 +186,6 @@ function ChatPageContent({ params }: { params: Promise<{ productId: string }> })
   const handleCancelTransaction = async () => {
     if (!user || !product || !isSeller) return
     
-    const confirmed = window.confirm(
-      "取引を中止しますか?\n\n" +
-      "この操作により以下が実行されます:\n" +
-      "・商品が取引前の状態に戻ります\n" +
-      "・チャット履歴が削除されます\n" +
-      "・双方が商品詳細ページにリダイレクトされます"
-    )
-    
-    if (!confirmed) return
-    
     setIsCancelling(true)
     
     try {
@@ -372,10 +363,41 @@ function ChatPageContent({ params }: { params: Promise<{ productId: string }> })
         const sellerRef = doc(db, "users", product.sellerId)
         const sellerSnap = await getDoc(sellerRef)
         if (sellerSnap.exists()) {
-          const data = sellerSnap.data() as { evalution?: unknown }
-          const prev = typeof data.evalution === "number" ? data.evalution : null
-          const next = (prev == null || prev === 0) ? rating : (rating + prev) / 2
-          await updateDoc(sellerRef, { evalution: next })
+          const data = sellerSnap.data() as { evalution?: unknown; evaluationCount?: unknown }
+          
+          // 前回までの平均評価と評価数を取得
+          const prevAverage = typeof data.evalution === "number" ? data.evalution : 0
+          let prevCount = typeof data.evaluationCount === "number" ? data.evaluationCount : 0
+          
+          // 🔧 既存ユーザー対応: evaluationCountが0だが評価平均が存在する場合、
+          // evaluationsサブコレクションから実際の評価件数を取得
+          if (prevCount === 0 && prevAverage > 0) {
+            try {
+              const evalsCol = collection(db, "users", product.sellerId, "evaluations")
+              const evalsSnap = await getDocs(evalsCol)
+              prevCount = evalsSnap.size
+              console.log(`⚠️ evaluationCount未設定ユーザー検出。サブコレクションから件数取得: ${prevCount}件`)
+            } catch (e) {
+              console.error("評価件数の取得に失敗。初回評価として扱います", e)
+              prevCount = 0
+            }
+          }
+          
+          // 新しい平均を計算: (前回までの合計 + 今回の評価) / 新しい評価数
+          const totalScore = (prevAverage * prevCount) + rating
+          const newCount = prevCount + 1
+          const newAverage = totalScore / newCount
+          
+          // 小数点第1位まで丸める
+          const roundedAverage = Math.round(newAverage * 10) / 10
+          
+          // Firestoreを更新
+          await updateDoc(sellerRef, { 
+            evalution: roundedAverage,
+            evaluationCount: newCount
+          })
+          
+          console.log(`✅ 評価を更新: ${prevAverage}(${prevCount}件) → ${roundedAverage}(${newCount}件)`)
         }
       } catch (e) {
         console.error("ユーザー評価の再計算に失敗しました", e)
@@ -399,15 +421,16 @@ function ChatPageContent({ params }: { params: Promise<{ productId: string }> })
         console.error("❌ purchases への購入履歴保存に失敗", e)
       }
 
-      // 売り手の総売上を更新
+      // 売り手の総売上と取引件数を更新
       try {
         const sellerRef = doc(db, "users", product.sellerId)
         await updateDoc(sellerRef, {
-          Sales: increment(product.price || 0)
+          Sales: increment(product.price || 0),
+          transactions: increment(1)
         })
-        console.log(`✅ 売り手(${product.sellerId})の総売上を更新: +¥${product.price}`)
+        console.log(`✅ 売り手(${product.sellerId})の総売上を更新: +¥${product.price}, 取引件数: +1`)
       } catch (e) {
-        console.error("❌ 売り手の総売上更新に失敗", e)
+        console.error("❌ 売り手の総売上・取引件数更新に失敗", e)
       }
       // サブコレクション(chat)削除
       try {
@@ -602,22 +625,55 @@ function ChatPageContent({ params }: { params: Promise<{ productId: string }> })
                   取引内容について双方が合意したら、「同意する」ボタンを押してください。双方の同意が確認されると評価ステップへ進みます。
                 </p>
                 <div className="flex flex-col gap-2">
-                  <Button onClick={handleAgree} disabled={hasAgreed} className="w-full">
-                    <Check className="h-4 w-4 mr-2" />
-                    {hasAgreed ? "同意済み（相手の同意待ち）" : "同意する"}
-                  </Button>
+                  <ConfirmDialog
+                    trigger={
+                      <Button disabled={hasAgreed} className="w-full">
+                        <Check className="h-4 w-4 mr-2" />
+                        {hasAgreed ? "同意済み（相手の同意待ち）" : "同意する"}
+                      </Button>
+                    }
+                    title="取引内容に同意しますか？"
+                    description={(
+                      <>
+                        この商品の取引条件に合意します。<br />
+                        双方が同意すると評価ステップへ進めます。<br />
+                        内容に問題がないか再度ご確認ください。
+                      </>
+                    )}
+                    confirmLabel="同意を確定"
+                    onConfirm={handleAgree}
+                    confirmDisabled={hasAgreed}
+                  />
                   
                   {/* 出品者のみに取引中止ボタンを表示 */}
                   {isSeller && (
-                    <Button 
-                      onClick={handleCancelTransaction} 
-                      disabled={isCancelling}
-                      variant="destructive" 
-                      className="w-full"
-                    >
-                      <X className="h-4 w-4 mr-2" />
-                      {isCancelling ? "中止処理中..." : "取引を中止"}
-                    </Button>
+                    <ConfirmDialog
+                      trigger={
+                        <Button 
+                          disabled={isCancelling}
+                          variant="destructive" 
+                          className="w-full"
+                        >
+                          <X className="h-4 w-4 mr-2" />
+                          {isCancelling ? "中止処理中..." : "取引を中止"}
+                        </Button>
+                      }
+                      title="取引を中止しますか？"
+                      description={(
+                        <>
+                          以下の処理が実行されます:<br />
+                          ・商品が取引前の状態に戻ります（再度別ユーザーが交渉可能）<br />
+                          ・チャット履歴が削除されます<br />
+                          ・商品詳細ページへ遷移します<br />
+                          この操作は取り消せません。よろしいですか？
+                        </>
+                      )}
+                      confirmLabel="中止を確定"
+                      confirmVariant="destructive"
+                      onConfirm={handleCancelTransaction}
+                      confirmDisabled={isCancelling}
+                      loading={isCancelling}
+                    />
                   )}
                 </div>
               </CardContent>

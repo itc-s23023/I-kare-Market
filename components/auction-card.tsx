@@ -45,7 +45,7 @@ export function AuctionCard({ auction }: AuctionCardProps) {
 
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow h-full flex flex-col">
-      <div className="aspect-square relative overflow-hidden bg-muted">
+      <div className="aspect-[4/3] sm:aspect-square relative overflow-hidden bg-muted">
         <Image 
           src={auction.images[0] || "/placeholder.svg"} 
           alt={auction.title} 
@@ -76,8 +76,15 @@ export function AuctionCard({ auction }: AuctionCardProps) {
           <Badge className="absolute top-3 left-3 bg-primary">入札中</Badge>
         )}
       </div>
-      <CardContent className="p-4 flex-1 flex flex-col">
+      <CardContent className="p-3 sm:p-4 flex-1 flex flex-col">
         <h3 className="font-semibold text-balance leading-tight mb-2 line-clamp-2">{auction.title}</h3>
+
+        {/* オークション説明 - スマホでは非表示 */}
+        {auction.description && (
+          <p className="hidden sm:block text-sm text-muted-foreground mb-2 line-clamp-2">
+            {auction.description}
+          </p>
+        )}
 
         <div className="space-y-2 mb-3">
           <div className="flex items-center justify-between">
