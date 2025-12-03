@@ -46,6 +46,12 @@ export default function ProfilePage() {
     error: auctionsError,
   } = useAuctions()
   const { evaluations, loading: evaluationsLoading, error: evaluationsError } = useEvaluations()
+  // 評価ページネーション制御
+  const [reviewsPage, setReviewsPage] = useState(1)
+  useEffect(() => {
+    // 評価件数が変わったら1ページ目に戻す
+    setReviewsPage(1)
+  }, [evaluations.length])
 
   // 取引履歴ページネーション制御
   const [historyPage, setHistoryPage] = useState(1)
@@ -94,6 +100,14 @@ export default function ProfilePage() {
   const historyStart = (safeHistoryPage - 1) * HISTORY_PAGE_SIZE
   const historyEnd = Math.min(historyStart + HISTORY_PAGE_SIZE, purchaseHistory?.length || 0)
   const paginatedHistory = (purchaseHistory || []).slice(historyStart, historyEnd)
+
+  // 評価のページネーション用の計算（5件ずつ）
+  const REVIEWS_PAGE_SIZE = 5
+  const totalReviewsPages = Math.max(1, Math.ceil((evaluations?.length || 0) / REVIEWS_PAGE_SIZE))
+  const safeReviewsPage = Math.min(reviewsPage, totalReviewsPages)
+  const reviewsStart = (safeReviewsPage - 1) * REVIEWS_PAGE_SIZE
+  const reviewsEnd = Math.min(reviewsStart + REVIEWS_PAGE_SIZE, evaluations?.length || 0)
+  const paginatedEvaluations = (evaluations || []).slice(reviewsStart, reviewsEnd)
 
   return (
     <ProtectedRoute>
@@ -428,7 +442,7 @@ export default function ProfilePage() {
                 <div className="text-center py-12 text-red-500">{evaluationsError}</div>
               ) : evaluations.length > 0 ? (
                 <div className="space-y-4">
-                  {evaluations.map((evaluation) => (
+                  {paginatedEvaluations.map((evaluation) => (
                     <Card key={evaluation.id}>
                       <CardContent className="p-4">
                         <div className="flex items-start gap-4">
@@ -462,6 +476,53 @@ export default function ProfilePage() {
                       </CardContent>
                     </Card>
                   ))}
+                  {/* ページネーション（評価） */}
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-2">
+                    <div className="text-sm text-muted-foreground">
+                      {evaluations.length > 0 && (
+                        <span>
+                          {reviewsStart + 1} - {reviewsEnd} 件 / 全 {evaluations.length} 件
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setReviewsPage((p) => Math.max(1, p - 1))}
+                        disabled={safeReviewsPage === 1}
+                        aria-label="前のページへ"
+                      >
+                        前へ
+                      </Button>
+                      <div className="flex items-center gap-1">
+                        {Array.from({ length: totalReviewsPages }).map((_, i) => {
+                          const page = i + 1
+                          return (
+                            <Button
+                              key={page}
+                              variant={page === safeReviewsPage ? "default" : "ghost"}
+                              size="sm"
+                              onClick={() => setReviewsPage(page)}
+                              aria-current={page === safeReviewsPage ? "page" : undefined}
+                              aria-label={`ページ ${page}`}
+                            >
+                              {page}
+                            </Button>
+                          )
+                        })}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setReviewsPage((p) => Math.min(totalReviewsPages, p + 1))}
+                        disabled={safeReviewsPage === totalReviewsPages}
+                        aria-label="次のページへ"
+                      >
+                        次へ
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="text-center py-12">

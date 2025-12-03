@@ -53,6 +53,8 @@ const conditionLabels = {
 export default function UserProfilePage() {
   const [activeVisibleCount, setActiveVisibleCount] = useState(6)
   const [soldVisibleCount, setSoldVisibleCount] = useState(6)
+  const [evaluationPage, setEvaluationPage] = useState(1)
+  const evaluationsPerPage = 5
   const params = useParams()
   const userId = params.id as string
   
@@ -207,45 +209,45 @@ export default function UserProfilePage() {
 
       <main className="container px-4 py-8 max-w-6xl mx-auto">
         <Card className="mb-8">
-          <CardContent className="p-8">
-            <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">
-              <Avatar className="h-24 w-24">
+          <CardContent className="p-4 md:p-8">
+            <div className="flex flex-col md:flex-row gap-4 md:gap-6 items-start md:items-center">
+              <Avatar className="h-16 w-16 md:h-24 md:w-24">
                 <AvatarImage src={userProfile.avatar || "/placeholder.svg"} />
-                <AvatarFallback className="text-2xl">{userProfile.name[0]}</AvatarFallback>
+                <AvatarFallback className="text-lg md:text-2xl">{userProfile.name[0]}</AvatarFallback>
               </Avatar>
 
-              <div className="flex-1 space-y-3">
+              <div className="flex-1 space-y-2 md:space-y-3 w-full">
                 <div>
-                  <h1 className="text-3xl font-bold mb-2">{userProfile.name}</h1>
-                  <div className="flex items-center gap-4 text-muted-foreground">
+                  <h1 className="text-xl md:text-3xl font-bold mb-1 md:mb-2">{userProfile.name}</h1>
+                  <div className="flex items-center gap-2 md:gap-4 text-muted-foreground">
                     <div className="flex items-center gap-1">
-                      <Calendar className="h-4 w-4" />
-                      <span className="text-sm">登録日: {userProfile.joinedDate ? new Date(userProfile.joinedDate).toLocaleDateString("ja-JP") : "不明"}</span>
+                      <Calendar className="h-3 w-3 md:h-4 md:w-4" />
+                      <span className="text-xs md:text-sm">登録日: {userProfile.joinedDate ? new Date(userProfile.joinedDate).toLocaleDateString("ja-JP") : "不明"}</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex flex-wrap gap-4">
-                  <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-950 px-4 py-2 rounded-lg">
-                    <ShoppingBag className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                    <div>
-                      <p className="text-2xl font-bold">{userProfile.transactions}</p>
-                      <p className="text-xs text-muted-foreground">売却済み</p>
+                <div className="grid grid-cols-3 gap-2 md:flex md:flex-wrap md:gap-4">
+                  <div className="flex flex-col md:flex-row items-center md:gap-2 bg-blue-50 dark:bg-blue-950 px-2 py-2 md:px-4 md:py-2 rounded-lg">
+                    <ShoppingBag className="h-4 w-4 md:h-5 md:w-5 text-blue-600 dark:text-blue-400 mb-1 md:mb-0" />
+                    <div className="text-center md:text-left">
+                      <p className="text-lg md:text-2xl font-bold leading-none">{userProfile.transactions}</p>
+                      <p className="text-[10px] md:text-xs text-muted-foreground whitespace-nowrap">売却済み</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 bg-yellow-50 dark:bg-yellow-950 px-4 py-2 rounded-lg">
-                    <Star className="h-5 w-5 text-yellow-500 dark:text-yellow-400" />
-                    <div>
-                      <p className="text-2xl font-bold">{userProfile.evalution}</p>
-                      <p className="text-xs text-muted-foreground">評価</p>
+                  <div className="flex flex-col md:flex-row items-center md:gap-2 bg-yellow-50 dark:bg-yellow-950 px-2 py-2 md:px-4 md:py-2 rounded-lg">
+                    <Star className="h-4 w-4 md:h-5 md:w-5 text-yellow-500 dark:text-yellow-400 mb-1 md:mb-0" />
+                    <div className="text-center md:text-left">
+                      <p className="text-lg md:text-2xl font-bold leading-none">{userProfile.evalution}</p>
+                      <p className="text-[10px] md:text-xs text-muted-foreground whitespace-nowrap">評価</p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 bg-green-50 dark:bg-green-950 px-4 py-2 rounded-lg">
-                    <Package className="h-5 w-5 text-green-600 dark:text-green-400" />
-                    <div>
-                      <p className="text-2xl font-bold">{activeProducts.length}</p>
-                      <p className="text-xs text-muted-foreground">販売中</p>
+                  <div className="flex flex-col md:flex-row items-center md:gap-2 bg-green-50 dark:bg-green-950 px-2 py-2 md:px-4 md:py-2 rounded-lg">
+                    <Package className="h-4 w-4 md:h-5 md:w-5 text-green-600 dark:text-green-400 mb-1 md:mb-0" />
+                    <div className="text-center md:text-left">
+                      <p className="text-lg md:text-2xl font-bold leading-none">{activeProducts.length}</p>
+                      <p className="text-[10px] md:text-xs text-muted-foreground whitespace-nowrap">販売中</p>
                     </div>
                   </div>
                 </div>
@@ -263,7 +265,7 @@ export default function UserProfilePage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
                 {activeProducts.slice(0, activeVisibleCount).map((product) => (
                   <Link key={product.id} href={`/products/${product.id}`}>
                     <Card className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
@@ -314,7 +316,7 @@ export default function UserProfilePage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
                 {soldProducts.slice(0, soldVisibleCount).map((product) => (
                   <Link key={product.id} href={`/products/${product.id}`}>
                     <Card className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer opacity-60">
@@ -368,41 +370,68 @@ export default function UserProfilePage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {evaluations.map((evaluation) => (
-                  <Card key={evaluation.id}>
-                    <CardContent className="p-4">
-                      <div className="flex items-start gap-4">
-                        <Avatar>
-                          <AvatarImage src={evaluation.userimageURL} />
-                          <AvatarFallback>{evaluation.user[0]}</AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className="font-semibold">{evaluation.user}</span>
-                            <div className="flex items-center gap-1">
-                              {Array.from({ length: evaluation.score }).map((_, i) => (
-                                <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                              ))}
-                              {Array.from({ length: 5 - evaluation.score }).map((_, i) => (
-                                <Star key={i} className="h-4 w-4 text-gray-300" />
-                              ))}
+                {evaluations
+                  .slice((evaluationPage - 1) * evaluationsPerPage, evaluationPage * evaluationsPerPage)
+                  .map((evaluation) => (
+                    <Card key={evaluation.id}>
+                      <CardContent className="p-4">
+                        <div className="flex items-start gap-4">
+                          <Avatar>
+                            <AvatarImage src={evaluation.userimageURL} />
+                            <AvatarFallback>{evaluation.user[0]}</AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="font-semibold">{evaluation.user}</span>
+                              <div className="flex items-center gap-1">
+                                {Array.from({ length: evaluation.score }).map((_, i) => (
+                                  <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                                ))}
+                                {Array.from({ length: 5 - evaluation.score }).map((_, i) => (
+                                  <Star key={i} className="h-4 w-4 text-gray-300" />
+                                ))}
+                              </div>
+                              <span className="text-sm text-muted-foreground">({evaluation.score}/5)</span>
                             </div>
-                            <span className="text-sm text-muted-foreground">({evaluation.score}/5)</span>
+                            {evaluation.content && (
+                              <p className="text-sm text-muted-foreground mb-2 leading-relaxed">
+                                {evaluation.content}
+                              </p>
+                            )}
+                            <span className="text-xs text-muted-foreground">
+                              {evaluation.createdAt ? new Date(evaluation.createdAt).toLocaleDateString("ja-JP") : ""}
+                            </span>
                           </div>
-                          {evaluation.content && (
-                            <p className="text-sm text-muted-foreground mb-2 leading-relaxed">
-                              {evaluation.content}
-                            </p>
-                          )}
-                          <span className="text-xs text-muted-foreground">
-                            {evaluation.createdAt ? new Date(evaluation.createdAt).toLocaleDateString("ja-JP") : ""}
-                          </span>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardContent>
+                    </Card>
+                  ))}
               </div>
+              
+              {/* ページネーション */}
+              {evaluations.length > evaluationsPerPage && (
+                <div className="flex items-center justify-center gap-2 mt-6">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setEvaluationPage(Math.max(1, evaluationPage - 1))}
+                    disabled={evaluationPage === 1}
+                  >
+                    前へ
+                  </Button>
+                  <span className="text-sm text-muted-foreground px-4">
+                    {evaluationPage} / {Math.ceil(evaluations.length / evaluationsPerPage)}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setEvaluationPage(Math.min(Math.ceil(evaluations.length / evaluationsPerPage), evaluationPage + 1))}
+                    disabled={evaluationPage === Math.ceil(evaluations.length / evaluationsPerPage)}
+                  >
+                    次へ
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
