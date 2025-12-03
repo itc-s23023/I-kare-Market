@@ -15,7 +15,7 @@ import { notFound, useRouter } from "next/navigation"
 import { ProtectedRoute } from "@/components/protected-route"
 import { useAuth } from "@/components/auth-provider"
 import { useProducts } from "@/hooks/useProducts"
-import { doc, updateDoc, deleteDoc, getDoc } from "firebase/firestore"
+import { doc, updateDoc, deleteDoc, getDoc, collection, getDocs } from "firebase/firestore"
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage"
 import { db, storage } from "@/lib/firebaseConfig"
 import { ImageUpload } from "@/components/image-upload"
@@ -152,6 +152,18 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     setIsSubmitting(true)
     
     try {
+      // 先にサブコレクション chat を削除（FirestoreのdeleteDocは再帰削除しないため）
+      try {
+        const chatCol = collection(db, "products", id, "chat")
+        const chatSnap = await getDocs(chatCol)
+        if (chatSnap.size > 0) {
+          await Promise.all(chatSnap.docs.map((d) => deleteDoc(d.ref)))
+          console.log("🧹 products/" + id + "/chat を削除:", chatSnap.size, "件")
+        }
+      } catch (e) {
+        console.error("❌ chatサブコレクション削除に失敗（商品削除は続行）:", e)
+      }
+
       // Firestoreから削除
       await deleteDoc(doc(db, "products", id))
       
