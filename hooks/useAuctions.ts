@@ -1015,6 +1015,38 @@ export function useAuctionManagement() {
         updatedAt: new Date().toISOString()
       })
 
+      // 即決購入の通知を送信（購入者と出品者の両方に）
+      try {
+        console.log("🔔 即決購入通知送信開始")
+        
+        // 購入者への通知
+        await sendNotification({
+          userId: user.uid,
+          type: "auction_won",
+          title: "即決購入完了",
+          message: `「${auctionData.title}」を即決購入しました。出品者とチャットで取引を進めてください。`,
+          auctionId: auctionId,
+          sellerId: auctionData.sellerId,
+          itemType: "auction" as const,
+        })
+
+        // 出品者への通知
+        await sendNotification({
+          userId: auctionData.sellerId,
+          type: "auction_ended",
+          title: "即決購入されました",
+          message: `「${auctionData.title}」が ${user.displayName || "匿名ユーザー"} さんに即決購入されました。`,
+          auctionId: auctionId,
+          buyerId: user.uid,
+          itemType: "auction" as const,
+        })
+        
+        console.log("✅ 即決購入通知送信完了")
+      } catch (notificationError) {
+        console.error("⚠️ 即決購入通知送信エラー（購入自体は成功）:", notificationError)
+        // 通知エラーでも購入は成功しているので処理は続行
+      }
+
       // チャット初期化（meta作成）
       console.log("💬 チャット初期化開始")
       const metaRef = doc(db, "auctions", auctionId, "chat", "meta")
