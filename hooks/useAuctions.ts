@@ -825,24 +825,9 @@ export function useAuctionManagement() {
         return
       }
 
-      // 通知のみ作成（チャットメッセージは他の場所で作成される）
-      const notificationData = {
-        userId: auctionData.highestBidderId,
-        userName: auctionData.highestBidderName,
-        type: "auction_won",
-        title: "オークション落札",
-        message: `「${auctionData.title}」のオークションで最高入札者となりました。出品者とのチャットが開始されました。`,
-        auctionId: auctionId,
-        sellerId: auctionData.sellerId,
-        sellerName: auctionData.sellerName,
-        finalPrice: auctionData.currentBid,
-        read: false,
-        createdAt: new Date().toISOString()
-      }
-
-      await addDoc(collection(db, "notifications"), notificationData)
-
-      console.log("✅ 最高入札者への通知完了（チャット初期メッセージは別途作成）")
+      // この関数では通知を送信しない（重複防止）
+      // 通知は checkAndEndExpiredAuctions で既に送信済み
+      console.log("✅ 最高入札者への通知スキップ（重複防止）")
     } catch (error) {
       console.error("❌ 最高入札者への通知エラー:", error)
     }
