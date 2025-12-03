@@ -209,8 +209,58 @@ export function Header() {
           )}
         </nav>
 
+        {/* スマホ表示用の通知ボタン */}
+        <div className="md:hidden ml-auto flex items-center gap-2">
+          {user && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="relative">
+                  <Bell className="h-5 w-5" />
+                  {unreadCount > 0 && (
+                    <Badge
+                      variant="destructive"
+                      className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                    >
+                      {unreadCount}
+                    </Badge>
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-80 max-h-96 overflow-y-auto">
+                <div className="px-2 py-1.5 text-sm font-semibold">通知</div>
+                {notifications.length === 0 ? (
+                  <div className="px-2 py-8 text-center text-sm text-muted-foreground">通知はありません</div>
+                ) : (
+                  notifications.map((notification) => (
+                    <DropdownMenuItem
+                      key={notification.id}
+                      className="flex flex-col items-start gap-1 p-3 cursor-pointer"
+                      onClick={() => handleNotificationClick(notification.id, notification.auctionId, notification.productId, notification.type)}
+                    >
+                      <div className="flex items-start gap-2 w-full">
+                        <div className="flex-1">
+                          <p className={`text-sm font-medium ${!notification.read ? "text-foreground" : "text-muted-foreground"}`}>
+                            {notification.title}
+                          </p>
+                          <p className={`text-sm leading-relaxed mt-1 ${!notification.read ? "text-foreground" : "text-muted-foreground"}`}>
+                            {notification.message}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {new Date(notification.createdAt).toLocaleString("ja-JP")}
+                          </p>
+                        </div>
+                        {!notification.read && <div className="h-2 w-2 rounded-full bg-primary mt-1 flex-shrink-0" />}
+                      </div>
+                    </DropdownMenuItem>
+                  ))
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
+
         <Sheet>
-          <SheetTrigger asChild className="md:hidden ml-auto">
+          <SheetTrigger asChild className="md:hidden">
             <Button variant="ghost" size="icon">
               <Menu className="h-5 w-5" />
             </Button>
@@ -250,21 +300,16 @@ export function Header() {
 
               {user ? (
                 <>
-                  <Button asChild variant="ghost" className="w-full justify-start relative">
-                    <div className="flex items-center w-full">
-                      <Bell className="h-4 w-4 mr-2" />
-                      通知
-                      {unreadCount > 0 && (
-                        <Badge variant="destructive" className="ml-auto">
-                          {unreadCount}
-                        </Badge>
-                      )}
-                    </div>
-                  </Button>
                   <Button asChild variant="ghost" className="w-full justify-start">
                     <Link href="/profile">
                       <User className="h-4 w-4 mr-2" />
                       マイページ
+                    </Link>
+                  </Button>
+                  <Button asChild variant="ghost" className="w-full justify-start">
+                    <Link href="/contact">
+                      <Phone className="h-4 w-4 mr-2" />
+                      お問い合わせ
                     </Link>
                   </Button>
                   <Button 
