@@ -14,6 +14,7 @@ interface ProductFormProps {
     content: string
     price: number
     is_trading: boolean
+    category: string
     condition: string
   }) => void
   isSubmitting: boolean
@@ -25,6 +26,9 @@ export function ProductForm({ onSubmit, isSubmitting }: ProductFormProps) {
   const [price, setPrice] = useState("")
   const [is_trading, setIsTrading] = useState(false)
   const [condition, setCondition] = useState("")
+  const [category, setCategory] = useState("other")
+  // ローカルで一度ボタンを押したら再押下を防ぐフラグ
+  const [clicked, setClicked] = useState(false)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -34,11 +38,15 @@ export function ProductForm({ onSubmit, isSubmitting }: ProductFormProps) {
       return
     }
 
+    // 重複送信を防ぐため、送信直前にローカルフラグを立てる
+    setClicked(true)
+
     onSubmit({
       productname,
       content,
       price: Number(price),
       is_trading,
+      category,
       condition
     })
 
@@ -122,9 +130,9 @@ export function ProductForm({ onSubmit, isSubmitting }: ProductFormProps) {
           <Button 
             type="submit" 
             className="w-full"
-            disabled={isSubmitting}
+            disabled={isSubmitting || clicked}
           >
-            {isSubmitting ? "出品中..." : "商品を出品する"}
+            {isSubmitting || clicked ? "出品中..." : "商品を出品する"}
           </Button>
         </form>
       </CardContent>

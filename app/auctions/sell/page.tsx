@@ -34,6 +34,8 @@ export default function AuctionSellPage() {
   
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  // ローカルで一度ボタンを押したら再押下を防ぐフラグ
+  const [clicked, setClicked] = useState(false)
 
   const uploadImages = async (files: File[]) => {
     console.log("🔄 画像アップロード開始:", files.length, "枚")
@@ -72,6 +74,9 @@ export default function AuctionSellPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    // 既に送信開始済みなら何もしない
+    if (isSubmitting || clicked) return
+
     setError(null)
     setSuccess(null)
     
@@ -97,6 +102,9 @@ export default function AuctionSellPage() {
         throw new Error("終了日時は現在時刻より後に設定してください")
       }
       
+      // ここで重複防止フラグを立てる（バリデーション通過後）
+      setClicked(true)
+
       // 画像アップロード
       let imageUrls: string[] = []
       if (selectedImages.length > 0) {
@@ -293,7 +301,7 @@ export default function AuctionSellPage() {
                   <Button 
                     type="submit"
                     className="w-full"
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || clicked}
                   >
                     {isSubmitting ? "出品中..." : "オークション出品"}
                   </Button>
@@ -307,7 +315,7 @@ export default function AuctionSellPage() {
                 variant="outline" 
                 className="flex-1" 
                 onClick={() => router.back()}
-                disabled={isSubmitting}
+                disabled={isSubmitting || clicked}
               >
                 キャンセル
               </Button>
