@@ -290,27 +290,28 @@ export default function AuctionSellPage() {
                     </div>
                   </div>
 
-                  <div className="flex gap-4 pt-4">
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      className="flex-1" 
-                      onClick={() => router.back()}
-                      disabled={isSubmitting}
-                    >
-                      キャンセル
-                    </Button>
-                    <Button 
-                      type="submit"
-                      className="flex-1"
-                      disabled={isSubmitting}
-                    >
-                      {isSubmitting ? "出品中..." : "オークション出品"}
-                    </Button>
-                  </div>
+                  <Button 
+                    type="submit"
+                    className="w-full"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? "出品中..." : "オークション出品"}
+                  </Button>
                 </form>
               </CardContent>
             </Card>
+
+            <div className="flex gap-4">
+              <Button 
+                type="button" 
+                variant="outline" 
+                className="flex-1" 
+                onClick={() => router.back()}
+                disabled={isSubmitting}
+              >
+                キャンセル
+              </Button>
+            </div>
 
             {isSubmitting && (
               <div className="text-center">
