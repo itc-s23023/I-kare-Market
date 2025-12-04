@@ -14,6 +14,7 @@ import {
   getDoc,
   getDocs,
   deleteDoc,
+  where,
 } from "firebase/firestore"
 import { db } from "@/lib/firebaseConfig"
 import { create } from "domain"
@@ -47,6 +48,52 @@ const sendChatNotification = async (notificationData: {
   senderId?: string
 }) => {
   try {
+  
+    const existingQuery = query(
+      collection(db, "notifications"),
+      where("userId", "==", notificationData.userId),
+      where("type", "==", "chat_message"),
+      where("senderId", "==", notificationData.senderId)
+    )
+    
+    if (notificationData.auctionId) {
+      // オークションの場合は auctionId でも絞り込み
+      const auctionQuery = query(
+        collection(db, "notifications"),
+        where("userId", "==", notificationData.userId),
+        where("type", "==", "chat_message"),
+        where("senderId", "==", notificationData.senderId),
+        where("auctionId", "==", notificationData.auctionId)
+      )
+      const existingSnapshot = await getDocs(auctionQuery)
+      
+      // 古い通知を削除
+      const deletePromises = existingSnapshot.docs.map(doc => deleteDoc(doc.ref))
+      await Promise.all(deletePromises)
+      
+      if (existingSnapshot.size > 0) {
+        console.log(`🗑️ 古いオークションチャット通知を削除: ${existingSnapshot.size}件`)
+      }
+    } else if (notificationData.productId) {
+      // 商品の場合は productId でも絞り込み
+      const productQuery = query(
+        collection(db, "notifications"),
+        where("userId", "==", notificationData.userId),
+        where("type", "==", "chat_message"),
+        where("senderId", "==", notificationData.senderId),
+        where("productId", "==", notificationData.productId)
+      )
+      const existingSnapshot = await getDocs(productQuery)
+      
+      // 古い通知を削除
+      const deletePromises = existingSnapshot.docs.map(doc => deleteDoc(doc.ref))
+      await Promise.all(deletePromises)
+      
+      if (existingSnapshot.size > 0) {
+        console.log(`🗑️ 古い商品チャット通知を削除: ${existingSnapshot.size}件`)
+      }
+    }
+
     // undefinedのフィールドを除外してFirestoreに送信
     const cleanData: any = {
       userId: notificationData.userId,
@@ -67,6 +114,7 @@ const sendChatNotification = async (notificationData: {
     }
 
     await addDoc(collection(db, "notifications"), cleanData)
+    console.log("✅ 新しいチャット通知を作成（古い通知は置き換え済み）")
   } catch (error) {
     console.error("チャット通知送信エラー:", error)
   }
