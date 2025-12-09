@@ -18,13 +18,20 @@ export function Header() {
   const router = useRouter()
   const pathname = usePathname()
   const { user, loading } = useAuth()
-  const { notifications, unreadCount, markAsRead } = useNotifications()
+  const { notifications, unreadCount, markAsRead, deleteNotification } = useNotifications()
 
   const isAuctionPage = pathname?.startsWith("/auctions")
 
   const handleNotificationClick = async (notificationId: string, auctionId?: string, productId?: string, type?: string) => {
     // 対象通知の詳細を取得(追加メタ情報で分岐を強化)
     const n = notifications.find((x) => x.id === notificationId)
+
+    // 入札なしオークション終了通知の処理（ページ遷移なし）
+    if (n?.type === "auction_ended" && !n?.buyerId) {
+      // 通知をFirestoreから完全削除
+      await deleteNotification(notificationId)
+      return
+    }
 
     // 通知を既読にする
     await markAsRead(notificationId)
