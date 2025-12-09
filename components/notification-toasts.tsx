@@ -8,12 +8,19 @@ import { X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 export function  NotificationToasts() {
-  const { toasts, removeToast, notifications } = useNotifications()
+  const { toasts, removeToast, removeToastAndDelete, notifications } = useNotifications()
   const router = useRouter()
 
   const handleToastClick = (toastId: string) => {
     const notification = notifications.find(n => n.id === toastId)
     if (!notification) return
+
+    // 入札なしオークション終了通知の処理（buyerIdがない auction_ended）
+    if (notification.type === "auction_ended" && !notification.buyerId) {
+      // トーストを削除し、通知データもFirestoreから完全削除
+      removeToastAndDelete(toastId)
+      return
+    }
 
     // チャットメッセージ通知の処理
     if (notification.type === "chat_message") {
@@ -27,14 +34,28 @@ export function  NotificationToasts() {
       return
     }
 
-    // オークション落札・終了の通知からチャットへ遷移
-    if ((notification.type === "auction_won" || notification.type === "auction_ended" || notification.type === "transaction_started") && notification.auctionId) {
+    // オークション落札・終了の通知からチャットへ遷移（ただし入札なし終了は除外）
+    if ((notification.type === "auction_won" || (notification.type === "auction_ended" && notification.buyerId) || notification.type === "transaction_started") && notification.auctionId) {
       router.push(`/chat/${notification.auctionId}?type=auction`)
       removeToast(toastId)
     }
     // 商品関連の通知からチャットへ遷移
     else if (notification.productId && notification.itemType === "product") {
       router.push(`/chat/${notification.productId}?type=product`)
+      removeToast(toastId)
+    }
+  }
+
+  const handleCloseClick = (toastId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    
+    const notification = notifications.find(n => n.id === toastId)
+    
+    // 入札なし通知の場合はDBから削除
+    if (notification?.type === "auction_ended" && !notification?.buyerId) {
+      removeToastAndDelete(toastId)
+    } else {
+      // その他の通知は既読にするだけ
       removeToast(toastId)
     }
   }
@@ -56,10 +77,7 @@ export function  NotificationToasts() {
                 size="icon"
                 variant="ghost"
                 className="h-6 w-6"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  removeToast(toast.id)
-                }}
+                onClick={(e) => handleCloseClick(toast.id, e)}
               >
                 <X className="h-4 w-4" />
               </Button>

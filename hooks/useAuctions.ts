@@ -389,7 +389,7 @@ export function useAuctions() {
               userId: auction.sellerId,
               type: "auction_ended",
               title: "オークション終了",
-              message: `「${auction.title}」のオークションが終了しました。入札者はいませんでした。`,
+              message: `「${auction.title}」のオークションが終了しました。入札者はいませんでした。（この通知はクリックで削除できます）`,
               auctionId: auction.id,
               itemType: "auction" as const,
             })

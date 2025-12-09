@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { collection, addDoc, query, where, onSnapshot, updateDoc, doc } from "firebase/firestore"
+import { collection, addDoc, query, where, onSnapshot, updateDoc, doc, deleteDoc } from "firebase/firestore"
 import { db } from "@/lib/firebaseConfig"
 import { useAuth } from "@/components/auth-provider"
 
@@ -27,7 +27,18 @@ export interface Toast {
   variant?: "default" | "destructive"
 }
 
-export function useNotifications() {
+export interface UseNotificationsReturn {
+  notifications: Notification[]
+  toasts: Toast[]
+  unreadCount: number
+  markAsRead: (notificationId: string) => Promise<void>
+  deleteNotification: (notificationId: string) => Promise<void>
+  removeToast: (toastId: string) => void
+  removeToastAndDelete: (toastId: string) => void
+  sendNotification: (notificationData: Omit<Notification, "id" | "createdAt">) => Promise<void>
+}
+
+export function useNotifications(): UseNotificationsReturn {
   const { user } = useAuth()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [toasts, setToasts] = useState<Toast[]>([])
@@ -101,12 +112,28 @@ export function useNotifications() {
     }
   }, [])
 
+  // 通知をFirestoreから完全に削除
+  const deleteNotification = useCallback(async (notificationId: string) => {
+    try {
+      await deleteDoc(doc(db, "notifications", notificationId))
+    } catch (error) {
+      console.error("通知の削除エラー:", error)
+    }
+  }, [])
+
   // トーストを削除
   const removeToast = useCallback((toastId: string) => {
     setToasts(prev => prev.filter(toast => toast.id !== toastId))
     // 対応する通知も既読にする
     markAsRead(toastId)
   }, [markAsRead])
+
+  // トーストを削除し、通知もDBから完全削除
+  const removeToastAndDelete = useCallback((toastId: string) => {
+    setToasts(prev => prev.filter(toast => toast.id !== toastId))
+    // 通知をFirestoreから削除
+    deleteNotification(toastId)
+  }, [deleteNotification])
 
   // 通知を送信する関数
   const sendNotification = useCallback(async (notificationData: Omit<Notification, "id" | "createdAt">) => {
@@ -126,7 +153,9 @@ export function useNotifications() {
     toasts,
     unreadCount,
     markAsRead,
+    deleteNotification,
     removeToast,
+    removeToastAndDelete,
     sendNotification
   }
 }
