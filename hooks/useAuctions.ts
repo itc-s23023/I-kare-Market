@@ -631,6 +631,11 @@ export function useBidding() {
         throw new Error(`入札額は現在価格より100円以上高く設定してください（最低入札額: ¥${minimumBid.toLocaleString()}）`)
       }
 
+      // 即決価格を超えないかチェック
+      if (auctionData.buyNowPrice && bidAmount > auctionData.buyNowPrice) {
+        throw new Error(`入札額は即決価格以下にしてください（最大入札額: ¥${auctionData.buyNowPrice.toLocaleString()}）`)
+      }
+
      
       const endTime = new Date(auctionData.endTime)
       const now = new Date()
@@ -668,6 +673,92 @@ export function useBidding() {
 
       console.log("📈 オークション情報更新:", updateData)
       await updateDoc(auctionRef, updateData)
+
+      // 即決価格に達したかチェック
+      if (auctionData.buyNowPrice && bidAmount >= auctionData.buyNowPrice) {
+        console.log(`🎯 即決価格に達しました。オークション自動終了処理開始: ${auctionId}`)
+        
+        // 落札者の画像URLを取得
+        let buyerImage = "/placeholder-user.jpg"
+        try {
+          const buyerRef = doc(db, "users", user.uid)
+          const buyerSnap = await getDoc(buyerRef)
+          if (buyerSnap.exists()) {
+            const buyerData = buyerSnap.data()
+            buyerImage = buyerData.imageURL || buyerData.photoURL || "/placeholder-user.jpg"
+          }
+        } catch (e) {
+          console.error("落札者画像取得エラー:", e)
+        }
+
+        // オークションを自動終了
+        await updateDoc(auctionRef, {
+          status: "ended",
+          endReason: "reached_buy_now_price",
+          buyerId: user.uid,
+          buyerName: user.displayName || "匿名ユーザー",
+          buyerImage: buyerImage,
+          finalPrice: bidAmount,
+          actualEndTime: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        })
+
+        // 購入者への通知
+        await sendNotification({
+          userId: user.uid,
+          type: "auction_won",
+          title: "即決価格に到達しました",
+          message: `「${auctionData.title}」が即決価格に到達しました。出品者とチャットで取引を進めてください。`,
+          auctionId: auctionId,
+          sellerId: auctionData.sellerId,
+          itemType: "auction" as const,
+        })
+
+        // 出品者への通知
+        await sendNotification({
+          userId: auctionData.sellerId,
+          type: "auction_ended",
+          title: "即決価格に到達しました",
+          message: `「${auctionData.title}」が ${user.displayName || "匿名ユーザー"} さんの入札で即決価格に到達しました。`,
+          auctionId: auctionId,
+          buyerId: user.uid,
+          itemType: "auction" as const,
+        })
+
+        // チャット初期化（meta作成）
+        const metaRef = doc(db, "auctions", auctionId, "chat", "meta")
+        await setDoc(metaRef, {
+          users: {
+            seller: {
+              id: auctionData.sellerId,
+              imageURL: auctionData.sellerImage || "/placeholder-user.jpg",
+            },
+            buyer: {
+              id: user.uid,
+              imageURL: buyerImage,
+            },
+          },
+        })
+
+        // 初回メッセージを送信
+        const chatRef = collection(db, "auctions", auctionId, "chat")
+        await addDoc(chatRef, {
+          senderId: "system",
+          senderName: "システム",
+          content: `即決価格に到達しました。${user.displayName || "匿名ユーザー"}さんとの取引を開始してください。`,
+          createdAt: serverTimestamp()
+        })
+
+        console.log(`✅ オークション自動終了完了: ${auctionId}`)
+        
+        return { 
+          success: true, 
+          message: "入札が完了しました。即決価格に到達したためオークションは終了します。",
+          newCurrentBid: bidAmount,
+          bidCount: newBidCount,
+          auctionEnded: true
+        }
+      }
 
       // 出品者に入札通知を送信
       try {

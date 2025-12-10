@@ -131,6 +131,7 @@ export default function AuctionDetailPage() {
   const hasNoBids = auction.bidCount === 0
   const isOwner = user?.uid === auction.sellerId
   const minimumBid = auction.currentBid + 100
+  const maximumBid = auction.buyNowPrice || undefined
   const isAuctionEnded = auction.status === "ended" || timeRemaining.isEnded
 
   const handleLikeClick = () => {
@@ -152,11 +153,25 @@ export default function AuctionDetailPage() {
       return
     }
 
+    // 即決価格がある場合、入札額がそれを超えないかチェック
+    if (maximumBid && bid > maximumBid) {
+      setBidError(`入札額は即決価格以下にしてください（最大入札額: ¥${maximumBid.toLocaleString()}）`)
+      return
+    }
+
     try {
       const result = await placeBid(auctionId, bid)
       setBidSuccess(result.message)
       setBidAmount("")
-      window.location.reload()
+      
+      // 即決価格に達してオークションが終了した場合
+      if (result.auctionEnded) {
+        setTimeout(() => {
+          window.location.reload()
+        }, 2000)
+      } else {
+        window.location.reload()
+      }
     } catch (error: any) {
       setBidError(error.message)
     }
@@ -364,7 +379,7 @@ export default function AuctionDetailPage() {
 
                         <div>
                           <label className="text-sm font-medium mb-2 block">
-                            入札額 (最低: ¥{minimumBid.toLocaleString()})
+                            入札額 (最低: ¥{minimumBid.toLocaleString()}{maximumBid ? ` / 最大: ¥${maximumBid.toLocaleString()}` : ""})
                           </label>
                           <div className="flex gap-2">
                             <Input
@@ -373,13 +388,14 @@ export default function AuctionDetailPage() {
                               onChange={(e) => setBidAmount(e.target.value)}
                               placeholder={minimumBid.toString()}
                               min={minimumBid}
+                              max={maximumBid}
                               className="flex-1"
                             />
                             <ConfirmDialog
                               trigger={
                                 <Button
                                   className="px-6"
-                                  disabled={!bidAmount || Number(bidAmount) < minimumBid || isSubmitting}
+                                  disabled={!bidAmount || Number(bidAmount) < minimumBid || (maximumBid && Number(bidAmount) > maximumBid) || isSubmitting}
                                 >
                                   <Gavel className="h-4 w-4 mr-2" />
                                   {isSubmitting ? "入札中..." : "入札"}
@@ -394,7 +410,7 @@ export default function AuctionDetailPage() {
                               )}
                               confirmLabel="入札を確定"
                               onConfirm={handleBid}
-                              confirmDisabled={!bidAmount || Number(bidAmount) < minimumBid || isSubmitting}
+                              confirmDisabled={!bidAmount || Number(bidAmount) < minimumBid || (maximumBid && Number(bidAmount) > maximumBid) || isSubmitting}
                               loading={isSubmitting}
                             />
                           </div>
