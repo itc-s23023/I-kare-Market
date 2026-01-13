@@ -1,30 +1,72 @@
-# Student marketplace website
+# アイカレマーケット (I-kare-Market)
 
-*Automatically synced with your [v0.app](https://v0.app) deployments*
+学生向けマーケットプレイス（Webフリマ/オークション）アプリのリポジトリです。
 
-[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/itc-s23023s-projects/v0-student-marketplace-website)
-[![Built with v0](https://img.shields.io/badge/Built%20with-v0.app-black?style=for-the-badge)](https://v0.app/chat/projects/XpvFqYjp4p1)
+簡潔な説明:
+- 学生同士で商品の出品・購入ができるWebアプリケーション
+- チャットで取引相手と連絡可能
+- Firebase (Auth / Firestore / Storage) をバックエンドに使用
 
-## Overview
+## 主な特徴
+- 商品の出品・編集・削除
+- 商品画像の複数アップロード
+- 商品検索・フィルタリング
+- 取引チャット（商品ごと）
+- プロフィール・取引履歴管理
+- Google/Firebase 認証によるログイン
+- レスポンシブ（PC / スマホ対応）
 
-This repository will stay in sync with your deployed chats on [v0.app](https://v0.app).
-Any changes you make to your deployed app will be automatically pushed to this repository from [v0.app](https://v0.app).
+## 技術スタック
+- 言語: TypeScript
+- フレームワーク: Next.js (App Router)
+- UI: React + Tailwind CSS + Radix UI
+- バックエンド: Firebase (Authentication, Firestore, Storage)
+- ビルド・デプロイ: Vercel（想定）
 
-## Deployment
+（詳細はリポジトリ内の `app/`, `components/`, `hooks/`, `lib/` を参照してください）
 
-Your project is live at:
+## クイックスタート（ローカル開発）
 
-**[https://vercel.com/itc-s23023s-projects/v0-student-marketplace-website](https://vercel.com/itc-s23023s-projects/v0-student-marketplace-website)**
+前提:
+- Node.js (推奨: 18.x 以上)
+- npm
 
-## Build your app
+1. 依存関係をインストール
 
-Continue building your app on:
+```bash
+npm install
+```
 
-**[https://v0.app/chat/projects/XpvFqYjp4p1](https://v0.app/chat/projects/XpvFqYjp4p1)**
+2. 環境変数を設定
 
-## How It Works
+- Firebase の設定は環境変数で管理してください。例: `.env.local` に下記を追加
 
-1. Create and modify your project using [v0.app](https://v0.app)
-2. Deploy your chats from the v0 interface
-3. Changes are automatically pushed to this repository
-4. Vercel deploys the latest version from this repository
+```text
+NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_auth_domain
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_storage_bucket
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
+NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
+```
+
+3. 開発サーバ起動
+
+```bash
+npm run dev
+```
+
+ブラウザで `http://localhost:3000` を開いて動作を確認します。
+
+## ディレクトリの概要
+- `app/` - Next.js のページ・APIルート
+- `components/` - 再利用可能な UI コンポーネント
+- `hooks/` - カスタムフック（データ取得やロジック）
+- `lib/` - Firebase 設定やユーティリティ
+- `public/` - 画像・静的ファイル
+
+詳しいファイル構成はリポジトリルートの `app/` と `components/` を参照してください。
+
+
+## 貢献
+- Issue や Pull Request を歓迎します。小さな修正でもお気軽に送ってください。
